@@ -1,0 +1,6 @@
+{
+  "name": "KormiGo - Smart On-Demand Technician & Home Service Platform",
+  "description": "যখন কাজ দরকার, KormiGo-তে মিস্ত্রি প্রস্তুত। Bangladesh's premier on-demand platform for verified electricians, plumbers, AC technicians, appliance repair, and home services.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

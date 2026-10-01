@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="bn">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Servexa - Smart On-Demand Technician & Home Service Platform</title>
+    <meta name="description" content="যখন কাজ দরকার, Servexa-তে মিস্ত্রি প্রস্তুত। Bangladesh's premier on-demand platform for verified electricians, plumbers, AC technicians, appliance repair, and home services." />
+    <meta property="og:title" content="Servexa - Smart On-Demand Technician & Home Service Platform" />
+    <meta property="og:description" content="যখন কাজ দরকার, Servexa-তে মিস্ত্রি প্রস্তুত। Bangladesh's premier on-demand platform for verified electricians, plumbers, AC technicians, appliance repair, and home services." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23F97316'/%3E%3Cpath d='M9 7h4v7l6-7h5l-7 7.5 7.5 9.5h-5.2L13 16.5V25H9V7z' fill='%23FFFFFF'/%3E%3Ccircle cx='23' cy='9' r='2' fill='%23FDE047'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script>
+      (function() {
+        try {
+          var theme = localStorage.getItem('kormigo_theme');
+          var isDark = theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.style.colorScheme = 'dark';
+          } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.style.colorScheme = 'light';
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body class="bg-stone-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans antialiased selection:bg-orange-500 selection:text-white transition-colors duration-200">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
