@@ -351,7 +351,7 @@ The exact technologies may vary depending on the implementation, but the project
 
 ### Database
 
-* PostgreSQL / Supabase
+* Firebase 
 
 ### Development Tools
 
