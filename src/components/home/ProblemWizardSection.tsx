@@ -4,6 +4,7 @@ import { Sparkles, ArrowRight, ShieldCheck, Star, Clock, AlertCircle, CheckCircl
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useApp } from '../../contexts/AppContext';
 import { diagnoseProblemWithRules, DiagnosisResult } from '../../services/problemDiagnosis';
+import { diagnoseWithAI } from '../../services/geminiService';
 
 export const ProblemWizardSection: React.FC = () => {
   const { t, isBangla } = useLanguage();
@@ -21,16 +22,20 @@ export const ProblemWizardSection: React.FC = () => {
     { bn: 'বাসার দরজার তালা আটকে গেছে চাবি খুলছে না', en: 'Door lock jammed and key stuck', cat: 'locksmith' },
   ];
 
-  const handleDiagnose = (queryToUse?: string) => {
+  const handleDiagnose = async (queryToUse?: string) => {
     const text = queryToUse !== undefined ? queryToUse : inputQuery;
     if (!text.trim()) return;
 
     setIsDiagnosing(true);
-    setTimeout(() => {
+    try {
+      const result = await diagnoseWithAI(text, categories);
+      setDiagnosis(result);
+    } catch {
       const result = diagnoseProblemWithRules(text, categories);
       setDiagnosis(result);
+    } finally {
       setIsDiagnosing(false);
-    }, 400);
+    }
   };
 
   // Find technicians matching the diagnosed category

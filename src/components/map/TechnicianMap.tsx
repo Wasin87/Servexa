@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { APIProvider, Map, AdvancedMarker, InfoWindow, useMap } from '@vis.gl/react-google-maps';
+import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 import {
   Search,
   Navigation,
@@ -20,7 +20,8 @@ import {
   AlertTriangle,
   Info,
   ZoomIn,
-  ZoomOut
+  ZoomOut,
+  MapPin
 } from 'lucide-react';
 import { Technician } from '../../types';
 import { useApp } from '../../contexts/AppContext';
@@ -57,19 +58,26 @@ type SortOption = 'recommended' | 'nearest' | 'rating' | 'experience' | 'price' 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_DEMO_KEY || "AIzaSyCeuvMJN64ZFTFVf-Vc9IXfkpFiGi3F5l8";
 
 const DARK_MAP_STYLE = [
-  { elementType: "geometry", stylers: [{ color: "#1e1e24" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#1e1e24" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#8a8a93" }] },
+  { elementType: "geometry", stylers: [{ color: "#181a20" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#121418" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#ffffff" }] },
+  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#282d38" }] },
+  { featureType: "administrative.country", elementType: "labels.text.fill", stylers: [{ color: "#ffffff" }] },
   { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#fb923c" }] },
   { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#fb923c" }] },
-  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#182c25" }] },
+  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#162822" }] },
   { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#34d399" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#2d2d34" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#1a1a1f" }] },
-  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#a1a1aa" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#2c3240" }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#1e222c" }] },
+  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#ffffff" }] },
+  { featureType: "road", elementType: "labels.text.stroke", stylers: [{ color: "#111317" }] },
   { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#ea580c" }] },
-  { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1a1a1f" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0c1524" }] },
+  { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#181a20" }] },
+  { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#ffffff" }] },
+  { featureType: "transit", elementType: "geometry", stylers: [{ color: "#262b36" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0c1527" }] },
+  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#93c5fd" }] },
+  { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#0c1527" }] },
 ];
 
 const MapController = ({ center, zoom }: { center: { lat: number; lng: number }; zoom: number }) => {
@@ -122,6 +130,9 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
   // Selected Technician & Popup
   const [selectedTechId, setSelectedTechId] = useState<string | null>(externalSelectedTechId || null);
   const [activePopupTechId, setActivePopupTechId] = useState<string | null>(null);
+  const [hoveredTechId, setHoveredTechId] = useState<string | null>(null);
+  const [hoveredClusterIndex, setHoveredClusterIndex] = useState<number | null>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Dynamic Camera Center & Zoom state
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>({ lat: DHAKA_CENTER.lat, lng: DHAKA_CENTER.lng });
@@ -338,9 +349,46 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
     return Object.values(areaClusters);
   }, [filteredTechnicians]);
 
+  const handleTechMouseEnter = (techId: string) => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setHoveredTechId(techId);
+  };
+
+  const handleTechMouseLeave = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredTechId(null);
+    }, 280);
+  };
+
+  const handleCardMouseEnter = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+  };
+
+  const handleCardMouseLeave = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredTechId(null);
+    }, 280);
+  };
+
   const handleSelectTechnician = (tech: Technician) => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
     setSelectedTechId(tech.id);
-    setActivePopupTechId(tech.id);
+    setActivePopupTechId(prev => prev === tech.id ? null : tech.id);
     if (onSelectTechnician) onSelectTechnician(tech);
 
     if (tech.latitude && tech.longitude) {
@@ -378,7 +426,7 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
       
       {/* Toast Notification */}
       {locationToast && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[2000] px-4 py-2 rounded-xl shadow-xl text-xs font-bold flex items-center gap-2 backdrop-blur-md animate-in slide-in-from-top-4 duration-200 bg-white/95 dark:bg-zinc-900/95 border border-orange-500/40 text-zinc-900 dark:text-zinc-100">
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-xl shadow-xl text-xs font-bold flex items-center gap-2 backdrop-blur-md animate-in slide-in-from-top-4 duration-200 bg-white/95 dark:bg-zinc-900/95 border border-orange-500/40 text-zinc-900 dark:text-zinc-100">
           <Navigation className="w-3.5 h-3.5 text-orange-500 shrink-0" />
           <span>{locationToast.message}</span>
           <button onClick={() => setLocationToast(null)} className="ml-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">✕</button>
@@ -386,7 +434,7 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
       )}
 
       {/* FLOATING TOP FILTER & CONTROL BAR */}
-      <div className="relative z-[1000] bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 px-3 sm:px-4 py-2.5 shadow-sm">
+      <div className="bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 px-3 sm:px-4 py-2.5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2.5">
           
           {/* Smart Problem Search Input with AI Diagnosis Button */}
@@ -545,7 +593,6 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
               gestureHandling="greedy"
               disableDefaultUI
               mapTypeId={currentMapTypeId}
-              styles={isDark && tileType === 'THEMED' ? DARK_MAP_STYLE : []}
               internalUsageAttributionIds={['gmp_mcp_codeassist_v1_aistudio']}
             >
               <MapController center={mapCenter} zoom={zoomLevel} />
@@ -554,21 +601,70 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
               {mapMode === 'HEATMAP' && heatmapClusters.map((cluster, i) => {
                 const intensity = Math.min(cluster.count / 4, 1);
                 const color = intensity > 0.6 ? '#dc2626' : intensity > 0.3 ? '#ea580c' : '#f59e0b';
+                const isHovered = hoveredClusterIndex === i;
 
                 return (
                   <AdvancedMarker
                     key={i}
                     position={{ lat: cluster.lat, lng: cluster.lng }}
                   >
-                    <div className="flex items-center justify-center relative select-none">
+                    <div
+                      className="flex items-center justify-center relative select-none cursor-pointer"
+                      onMouseEnter={() => setHoveredClusterIndex(i)}
+                      onMouseLeave={() => setHoveredClusterIndex(null)}
+                      onClick={() => {
+                        setSelectedCategory('all');
+                        setSearchQuery(cluster.name);
+                        setMapMode('PROS');
+                        setMapCenter({ lat: cluster.lat, lng: cluster.lng });
+                        setZoomLevel(14);
+                      }}
+                    >
                       <div className="absolute rounded-full animate-pulse" style={{ width: '90px', height: '90px', backgroundColor: color, opacity: 0.35 }} />
-                      <div className="absolute rounded-full" style={{ width: '24px', height: '24px', backgroundColor: color, opacity: 0.7 }} />
+                      <div className="absolute rounded-full" style={{ width: '28px', height: '28px', backgroundColor: color, opacity: 0.7 }} />
                       
-                      <div className="absolute flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-600 border border-white text-white text-xs font-black shadow-2xl whitespace-nowrap" style={{ transform: 'translate(-50%, -100%)', top: '-12px' }}>
+                      <div className="absolute flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-600 border-2 border-white text-white text-xs font-black shadow-2xl whitespace-nowrap" style={{ transform: 'translate(-50%, -100%)', top: '-12px' }}>
                         <span className="w-2 h-2 rounded-full bg-white animate-ping" />
                         <span>{cluster.name}</span>
                         <span className="bg-black/40 px-1.5 py-0.5 rounded-full text-[10px] font-mono">{cluster.count} {isBangla ? 'জন' : 'pros'}</span>
                       </div>
+
+                      {/* Cluster Circle Hover Card */}
+                      {isHovered && (
+                        <div
+                          className="absolute bottom-full mb-8 left-1/2 -translate-x-1/2 z-30 pointer-events-auto w-64 rounded-2xl bg-white/98 dark:bg-zinc-900/98 backdrop-blur-md border border-orange-500/40 shadow-2xl p-3.5 text-left font-sans animate-in fade-in zoom-in-95 duration-150"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[10px] font-black uppercase text-orange-600 dark:text-orange-400">
+                              {isBangla ? 'সার্ভিস হটস্পট জোন' : 'Service Hotspot'}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-600 dark:text-orange-400 text-[10px] font-bold">
+                              {intensity > 0.6 ? '🔥 উচ্চ চাহিদা' : 'মাঝারি চাহিদা'}
+                            </span>
+                          </div>
+                          <h4 className="font-black text-sm text-zinc-900 dark:text-white">{cluster.name}</h4>
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                            {isBangla
+                              ? `${cluster.count} জন পেশাজীবী এই জোনে সেবায় প্রস্তুত আছেন।`
+                              : `${cluster.count} verified professionals active in this coverage area.`}
+                          </p>
+                          <div className="mt-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setSearchQuery(cluster.name);
+                                setMapMode('PROS');
+                                setMapCenter({ lat: cluster.lat, lng: cluster.lng });
+                                setZoomLevel(14);
+                              }}
+                              className="w-full py-1.5 px-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 text-white font-bold text-xs text-center shadow-md hover:from-orange-500 hover:to-amber-500 cursor-pointer"
+                            >
+                              {isBangla ? 'মিস্ত্রিদের বিস্তারিত দেখুন' : 'View Area Technicians'}
+                            </button>
+                          </div>
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-white dark:border-t-zinc-900 drop-shadow-sm" />
+                        </div>
+                      )}
                     </div>
                   </AdvancedMarker>
                 );
@@ -588,15 +684,21 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
                 </AdvancedMarker>
               )}
 
-              {/* Normal pros markers mode */}
+              {/* Normal pros markers mode with interactive service circles and hover/click cards */}
               {mapMode === 'PROS' && filteredTechnicians.map(tech => {
                 const lat = tech.latitude || DHAKA_CENTER.lat;
                 const lng = tech.longitude || DHAKA_CENTER.lng;
                 if (isNaN(lat) || isNaN(lng)) return null;
 
                 const isSelected = selectedTechId === tech.id;
+                const isHovered = hoveredTechId === tech.id;
+                const isCardOpen = isHovered || activePopupTechId === tech.id;
+
                 const primarySkill = tech.skills[0] || 'other_services';
                 const visualMeta = CATEGORY_VISUAL_MAP[primarySkill] || CATEGORY_VISUAL_MAP.other_services;
+                const categoryName = isBangla
+                  ? (categories.find(c => c.id === primarySkill)?.nameBn || visualMeta.nameBn)
+                  : (categories.find(c => c.id === primarySkill)?.nameEn || visualMeta.nameEn);
 
                 const isAvailable = tech.availability === 'available';
                 const isBusy = tech.availability === 'busy';
@@ -606,106 +708,188 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
                   <AdvancedMarker
                     key={tech.id}
                     position={{ lat, lng }}
-                    onClick={() => handleSelectTechnician(tech)}
+                    zIndex={isCardOpen ? 9999 : isSelected ? 1000 : 100}
                   >
-                    <div className="flex flex-col items-center cursor-pointer transition-transform duration-200 group" style={{ transform: 'translate(0, 0)' }}>
-                      <div className={`relative w-10 h-10 rounded-2xl ${
-                        isSelected
-                          ? 'bg-orange-600 ring-4 ring-orange-500/60 scale-125 shadow-2xl text-white'
-                          : 'bg-white dark:bg-zinc-900 border-2 border-orange-500 text-zinc-900 dark:text-white shadow-xl hover:scale-110'
-                      } flex items-center justify-center`}>
-                        <span className="text-base select-none">{visualMeta.emoji}</span>
-                        <span className={`absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full ${statusDotColor} border-2 border-white shadow-sm ${isAvailable ? 'animate-pulse' : ''}`} />
+                    <div className="relative flex items-center justify-center select-none" style={{ transform: 'translate(0, 0)' }}>
+                      
+                      {/* SERVICE COVERAGE CIRCLE - Hovering & clicking triggers information card */}
+                      <div
+                        className={`absolute rounded-full transition-all duration-300 pointer-events-auto cursor-pointer ${
+                          isCardOpen
+                            ? 'scale-115 opacity-80 ring-2 ring-orange-500/60 bg-orange-500/20 shadow-lg'
+                            : 'opacity-40 hover:opacity-75 bg-orange-500/10 hover:bg-orange-500/20 border-2 border-orange-500/30 hover:border-orange-500'
+                        }`}
+                        style={{
+                          width: '110px',
+                          height: '110px',
+                          transform: 'translate(-50%, -50%)',
+                          top: '0px',
+                          left: '0px'
+                        }}
+                        onMouseEnter={() => handleTechMouseEnter(tech.id)}
+                        onMouseLeave={handleTechMouseLeave}
+                        onClick={() => handleSelectTechnician(tech)}
+                        title={isBangla ? `${tech.name} - ${categoryName} সার্ভিস জোন` : `${tech.name} - ${categoryName} Coverage Zone`}
+                      >
+                        {/* Subtle pulse ring inside service circle */}
+                        <span className="absolute inset-0 rounded-full border border-orange-400/30 animate-ping opacity-20 pointer-events-none" />
                       </div>
-                      {/* Cost Tag */}
-                      <div className="mt-1 px-1.5 py-0.5 rounded-md bg-zinc-950 text-white text-[9px] font-black font-mono tracking-tight shadow-md">
-                        ৳{tech.startingPrice}
+
+                      {/* Central Technician Pin Marker */}
+                      <div
+                        className="relative z-10 flex flex-col items-center cursor-pointer transition-transform duration-200 group"
+                        onMouseEnter={() => handleTechMouseEnter(tech.id)}
+                        onMouseLeave={handleTechMouseLeave}
+                        onClick={() => handleSelectTechnician(tech)}
+                        style={{ transform: 'translate(0, 0)' }}
+                      >
+                        <div className={`relative w-10 h-10 rounded-2xl ${
+                          isSelected || isCardOpen
+                            ? 'bg-orange-600 ring-4 ring-orange-500/60 scale-110 shadow-2xl text-white'
+                            : 'bg-white dark:bg-zinc-900 border-2 border-orange-500 text-zinc-900 dark:text-white shadow-xl hover:scale-110'
+                        } flex items-center justify-center transition-all duration-200`}>
+                          <span className="text-base select-none">{visualMeta.emoji}</span>
+                          <span className={`absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full ${statusDotColor} border-2 border-white shadow-sm ${isAvailable ? 'animate-pulse' : ''}`} />
+                        </div>
+                        
+                        {/* Cost Tag */}
+                        <div className="mt-1 px-1.5 py-0.5 rounded-md bg-zinc-950 text-white text-[9px] font-black font-mono tracking-tight shadow-md">
+                          ৳{tech.startingPrice}
+                        </div>
+                        {/* Spike */}
+                        <div className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[6px] border-t-zinc-950 -mt-0.5" />
                       </div>
-                      {/* Spike */}
-                      <div className="w-0 h-0 border-l-[5px] border-l-transparent border-r-[5px] border-r-transparent border-t-[6px] border-t-zinc-950 -mt-0.5" />
+
+                      {/* FLOATING HOVER & CLICK INFORMATION CARD DIRECTLY ABOVE THE CIRCLE */}
+                      {isCardOpen && (
+                        <div
+                          className="absolute bottom-full mb-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto w-[290px] sm:w-[320px] rounded-2xl bg-white/98 dark:bg-zinc-900/98 backdrop-blur-md border border-orange-500/40 shadow-2xl p-4 text-left font-sans animate-in fade-in zoom-in-95 duration-150"
+                          onMouseEnter={handleCardMouseEnter}
+                          onMouseLeave={handleCardMouseLeave}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {/* Close button if user pinned/clicked */}
+                          {activePopupTechId === tech.id && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActivePopupTechId(null);
+                                setSelectedTechId(null);
+                                setHoveredTechId(null);
+                              }}
+                              className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 flex items-center justify-center text-xs font-bold cursor-pointer transition-colors"
+                              title="Close"
+                            >
+                              ✕
+                            </button>
+                          )}
+
+                          {/* Service Category Header Badge */}
+                          <div className="flex items-center justify-between gap-1.5 mb-2.5 pr-4">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/15 border border-orange-500/30 text-orange-600 dark:text-orange-400 text-[11px] font-black">
+                              <span>{visualMeta.emoji}</span>
+                              <span className="truncate">{categoryName}</span>
+                            </span>
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              isAvailable
+                                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                                : isBusy
+                                ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                                : 'bg-zinc-500/15 text-zinc-500'
+                            }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${statusDotColor} ${isAvailable ? 'animate-pulse' : ''}`} />
+                              <span>{isAvailable ? (isBangla ? 'এখনই প্রস্তুত' : 'Available') : isBusy ? (isBangla ? 'কাজে ব্যস্ত' : 'Busy') : (isBangla ? 'অফলাইন' : 'Offline')}</span>
+                            </span>
+                          </div>
+
+                          {/* Technician Avatar, Name, Verification */}
+                          <div className="flex items-start gap-3">
+                            <div className="relative shrink-0">
+                              <img
+                                src={tech.avatar}
+                                alt={tech.name}
+                                className="w-12 h-12 rounded-xl object-cover border-2 border-orange-500/40 shadow-sm"
+                              />
+                              {tech.platformVerified && (
+                                <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center text-[9px] font-black border-2 border-white dark:border-zinc-900" title="Verified Pro">
+                                  ✓
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-black text-sm text-zinc-900 dark:text-white truncate flex items-center gap-1.5">
+                                <span>{tech.name}</span>
+                              </h4>
+                              <div className="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1 mt-0.5">
+                                <MapPin className="w-3 h-3 text-orange-500 shrink-0" />
+                                <span className="truncate">{tech.primaryArea}</span>
+                                <span className="text-zinc-400">·</span>
+                                <span className="text-orange-600 dark:text-orange-400 font-bold">{formatDistance(tech.calculatedDistanceKm, isBangla)}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Metric Chips: Rating, Experience, Jobs */}
+                          <div className="grid grid-cols-3 gap-1.5 mt-3 py-1.5 px-2 bg-stone-50 dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-700/60 rounded-xl text-center text-[10px]">
+                            <div>
+                              <div className="font-extrabold text-amber-500 flex items-center justify-center gap-0.5">
+                                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                                <span>{tech.rating}</span>
+                              </div>
+                              <div className="text-[8px] text-zinc-400">{tech.reviewCount} {isBangla ? 'রিভিউ' : 'reviews'}</div>
+                            </div>
+                            <div className="border-x border-zinc-200 dark:border-zinc-700 px-1">
+                              <div className="font-bold text-zinc-700 dark:text-zinc-200">{tech.experienceYears} {isBangla ? 'বছর' : 'yrs'}</div>
+                              <div className="text-[8px] text-zinc-400">{isBangla ? 'অভিজ্ঞতা' : 'exp'}</div>
+                            </div>
+                            <div>
+                              <div className="font-bold text-orange-600 dark:text-orange-400">৳{tech.startingPrice}</div>
+                              <div className="text-[8px] text-zinc-400">{isBangla ? 'শুরু মূল্য' : 'from'}</div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons: View Profile & Book Now */}
+                          <div className="grid grid-cols-2 gap-2 mt-3 pt-2.5 border-t border-zinc-100 dark:border-zinc-800">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/professionals/${tech.id}`);
+                              }}
+                              type="button"
+                              className="w-full py-2 px-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 hover:border-orange-500 dark:hover:border-orange-500 hover:bg-orange-50/50 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-bold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
+                            >
+                              <span>{isBangla ? 'প্রোফাইল দেখুন' : 'View Profile'}</span>
+                              <ArrowRight className="w-3 h-3 text-orange-500" />
+                            </button>
+
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/book?techId=${tech.id}`);
+                              }}
+                              type="button"
+                              className="w-full py-2 px-2.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs flex items-center justify-center gap-1 shadow-md shadow-orange-600/25 transition-all cursor-pointer active:scale-95"
+                            >
+                              <span>{isBangla ? 'বুক করুন' : 'Book Now'}</span>
+                            </button>
+                          </div>
+
+                          {/* Downward Pointer Triangle */}
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent border-t-[8px] border-t-white dark:border-t-zinc-900 drop-shadow-md" />
+                        </div>
+                      )}
                     </div>
                   </AdvancedMarker>
                 );
               })}
-
-              {/* Anchored InfoWindow Popup */}
-              {activePopupTechId && technicians.find(t => t.id === activePopupTechId) && (() => {
-                const tech = technicians.find(t => t.id === activePopupTechId)!;
-                const lat = tech.latitude || DHAKA_CENTER.lat;
-                const lng = tech.longitude || DHAKA_CENTER.lng;
-                const primarySkill = tech.skills[0] || 'other_services';
-                const visualMeta = CATEGORY_VISUAL_MAP[primarySkill] || CATEGORY_VISUAL_MAP.other_services;
-                const categoryName = isBangla
-                  ? (categories.find(c => c.id === primarySkill)?.nameBn || visualMeta.nameBn)
-                  : (categories.find(c => c.id === primarySkill)?.nameEn || visualMeta.nameEn);
-
-                return (
-                  <InfoWindow
-                    position={{ lat, lng }}
-                    onCloseClick={() => {
-                      setActivePopupTechId(null);
-                      setSelectedTechId(null);
-                    }}
-                    maxWidth={320}
-                  >
-                    <div className="kormigo-popup-card p-3.5 max-w-[280px] text-zinc-900 font-sans">
-                      <div className="flex items-start gap-3">
-                        <img src={tech.avatar} alt={tech.name} className="w-12 h-12 rounded-xl object-cover border border-orange-500/30 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-black text-sm text-zinc-900 flex items-center gap-1 leading-tight">
-                            <span>{tech.name}</span>
-                            {tech.platformVerified && <span className="text-[10px] text-blue-500 font-bold">✓</span>}
-                          </h4>
-                          <div className="flex items-center gap-1 mt-0.5 text-orange-600 text-xs font-bold">
-                            <span>{visualMeta.emoji}</span>
-                            <span className="truncate">{categoryName}</span>
-                          </div>
-                          <div className="text-[11px] text-zinc-500 mt-0.5">
-                            📍 {formatDistance(calculateHaversineDistance(userLocation?.lat || DHAKA_CENTER.lat, userLocation?.lng || DHAKA_CENTER.lng, lat, lng), isBangla)} ({tech.primaryArea})
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-1 mt-3 py-1.5 bg-stone-50 border border-zinc-200/60 rounded-xl text-center text-[10px]">
-                        <div>
-                          <div className="font-bold text-amber-500">★ {tech.rating}</div>
-                          <div className="text-[8px] text-zinc-400">{tech.reviewCount} reviews</div>
-                        </div>
-                        <div className="border-x border-zinc-200 px-1">
-                          <div className="font-bold text-zinc-700">{tech.experienceYears} {isBangla ? 'বছর' : 'yrs'}</div>
-                          <div className="text-[8px] text-zinc-400">experience</div>
-                        </div>
-                        <div>
-                          <div className="font-bold text-orange-600">{tech.completedJobs}</div>
-                          <div className="text-[8px] text-zinc-400">jobs done</div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 mt-3 pt-2 border-t border-zinc-100">
-                        <button
-                          onClick={() => navigate(`/professionals/${tech.id}`)}
-                          className="w-full py-2 rounded-xl border border-zinc-300 text-zinc-700 hover:bg-zinc-50 font-bold text-xs text-center cursor-pointer"
-                        >
-                          {isBangla ? 'প্রোফাইল' : 'Profile'}
-                        </button>
-                        <button
-                          onClick={() => navigate(`/book?techId=${tech.id}`)}
-                          className="w-full py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 text-white font-bold text-xs text-center shadow-md hover:from-orange-500 hover:to-amber-500 cursor-pointer"
-                        >
-                          {isBangla ? 'বুক করুন' : 'Book Now'}
-                        </button>
-                      </div>
-                    </div>
-                  </InfoWindow>
-                );
-              })()}
             </Map>
           </div>
         </APIProvider>
 
         {/* AI DIAGNOSIS FLOATING OVERLAY CARD (TOP-LEFT OF MAP) */}
         {aiDiagnosis && (
-          <div className="absolute top-4 left-4 z-[950] max-w-sm bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-4 rounded-2xl border border-orange-500/40 shadow-2xl animate-in slide-in-from-top-3 duration-200">
+          <div className="absolute top-4 left-4 z-20 max-w-sm bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md p-4 rounded-2xl border border-orange-500/40 shadow-2xl animate-in slide-in-from-top-3 duration-200">
             <div className="flex items-center justify-between gap-2 text-orange-600 dark:text-orange-400 text-xs font-black uppercase tracking-wider mb-1.5">
               <div className="flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4 animate-pulse" />
@@ -733,7 +917,7 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
         )}
 
         {/* Floating Map Controls (Top Right) */}
-        <div className="absolute top-4 right-4 z-[900] flex flex-col items-end gap-2">
+        <div className="absolute top-4 right-4 z-20 flex flex-col items-end gap-2">
           {/* Layer Switcher */}
           <div className="relative">
             <button
@@ -798,7 +982,7 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
         </div>
 
         {/* Floating Map Legend (Bottom Right) */}
-        <div className="hidden sm:block absolute bottom-6 right-4 z-[900] bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-2.5 shadow-lg text-[10px] space-y-1 max-w-[200px]">
+        <div className="hidden sm:block absolute bottom-6 right-4 z-20 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-2.5 shadow-lg text-[10px] space-y-1 max-w-[200px]">
           <div className="font-bold text-zinc-700 dark:text-zinc-300 pb-1 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
             <span>{isBangla ? 'চিহ্ন পরিচিতি' : 'Map Legend'}</span>
             <span className="text-[9px] text-orange-500 font-mono">Servexa</span>
@@ -833,7 +1017,7 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
 
       {/* MOBILE FILTER MODAL / DRAWER */}
       {showFilterDrawer && (
-        <div className="fixed inset-0 z-[3000] bg-black/60 backdrop-blur-xs flex justify-end animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-end animate-in fade-in duration-150">
           <div className="w-full max-w-sm h-full bg-white dark:bg-zinc-900 p-5 overflow-y-auto space-y-5 animate-in slide-in-from-right duration-200 flex flex-col justify-between">
             <div className="space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">

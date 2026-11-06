@@ -31,7 +31,8 @@ import {
   User,
   Image as ImageIcon,
   Edit3,
-  Sparkles
+  Sparkles,
+  MessageSquare
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -39,6 +40,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { RoleSwitcherBar } from '../components/common/RoleSwitcherBar';
 import { InvoiceModal } from '../components/common/InvoiceModal';
+import { ChatModal } from '../components/common/ChatModal';
 import { ImageUploader } from '../components/common/ImageUploader';
 import { AvailabilityStatus, Booking, Invoice, PortfolioItem, Technician } from '../types';
 
@@ -52,7 +54,8 @@ export const TechnicianDashboard: React.FC = () => {
     updateTechnicianAvailability,
     updateTechnicianProfile,
     addTechnicianPortfolio,
-    deleteTechnicianPortfolio
+    deleteTechnicianPortfolio,
+    getUnreadChatCount
   } = useApp();
   const { currentUser, updateProfile } = useAuth();
   const { t, isBangla } = useLanguage();
@@ -64,6 +67,7 @@ export const TechnicianDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'requests' | 'active' | 'completed' | 'earnings' | 'profile' | 'skills' | 'portfolio'>('requests');
   const [invoiceModalBooking, setInvoiceModalBooking] = useState<Booking | null>(null);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
+  const [chatBookingModal, setChatBookingModal] = useState<Booking | null>(null);
 
   // Success Toast state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -136,6 +140,9 @@ export const TechnicianDashboard: React.FC = () => {
   const pendingRequests = techBookings.filter(b => b.status === 'REQUESTED');
   const activeJobs = techBookings.filter(b => ['ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS'].includes(b.status));
   const completedJobs = techBookings.filter(b => b.status === 'COMPLETED');
+
+  // Total unread chat messages for active jobs
+  const activeJobsUnreadCount = activeJobs.reduce((acc, job) => acc + getUnreadChatCount(job.id, 'TECHNICIAN'), 0);
 
   // Simulated earnings calculation
   const totalEarnings = completedJobs.reduce((acc, b) => acc + (b.finalTotal || b.estimatedTotalMax || 650), 0) + 14500;
@@ -293,35 +300,58 @@ export const TechnicianDashboard: React.FC = () => {
       <RoleSwitcherBar />
 
       {/* Top Banner with Profile & Availability Toggle */}
-      <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 sm:p-8 border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <img
-              src={currentTech.avatar}
-              alt={currentTech.name}
-              className="w-16 h-16 rounded-2xl object-cover border-2 border-orange-500 shadow-sm"
-            />
-            <span className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-zinc-900 ${
-              currentTech.availability === 'available' ? 'bg-emerald-500 animate-pulse' : currentTech.availability === 'busy' ? 'bg-amber-500' : 'bg-zinc-500'
-            }`} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-orange-600 dark:text-orange-400 font-extrabold uppercase tracking-wider bg-orange-500/10 px-2 py-0.5 rounded-md">
-                {isBangla ? 'পেশাদার টেকনিশিয়ান ড্যাশবোর্ড' : 'Technician Dashboard'}
-              </span>
-              <span className="text-[11px] text-blue-600 dark:text-blue-400 font-bold flex items-center gap-0.5">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                {isBangla ? 'প্ল্যাটফর্ম ভেরিফায়েড' : 'Verified Pro'}
-              </span>
+      <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 sm:p-8 border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full lg:w-auto">
+          <div className="flex items-center gap-4">
+            <div className="relative shrink-0">
+              <img
+                src={currentTech.avatar}
+                alt={currentTech.name}
+                className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl object-cover border-2 border-orange-500 shadow-md ring-2 ring-orange-500/20"
+                referrerPolicy="no-referrer"
+              />
+              <span className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-zinc-900 ${
+                currentTech.availability === 'available' ? 'bg-emerald-500 animate-pulse' : currentTech.availability === 'busy' ? 'bg-amber-500' : 'bg-zinc-500'
+              }`} />
             </div>
-            <h1 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white mt-1">
-              {currentTech.name}
-            </h1>
-            <p className="text-xs text-zinc-500">
-              📍 {currentTech.primaryArea}, ঢাকা · 📞 {currentTech.phone} · ⭐ {currentTech.rating} ({currentTech.reviewCount} reviews) · ৳{currentTech.visitingFee} Visiting Fee
-            </p>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] text-orange-600 dark:text-orange-400 font-extrabold uppercase tracking-wider bg-orange-500/10 px-2 py-0.5 rounded-md">
+                  {isBangla ? 'পেশাদার টেকনিশিয়ান ড্যাশবোর্ড' : 'Technician Dashboard'}
+                </span>
+                <span className="text-[11px] text-blue-600 dark:text-blue-400 font-bold flex items-center gap-0.5">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  {isBangla ? 'প্ল্যাটফর্ম ভেরিফায়েড' : 'Verified Pro'}
+                </span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white mt-1">
+                {currentTech.name}
+              </h1>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                📍 {currentTech.primaryArea}, {isBangla ? 'ঢাকা' : 'Dhaka'} · 📞 {currentTech.phone} · ⭐ {currentTech.rating} ({currentTech.reviewCount} {isBangla ? 'রিভিউ' : 'reviews'}) · ৳{currentTech.visitingFee} {isBangla ? 'ভিজিটিং ফি' : 'Visiting Fee'}
+              </p>
+            </div>
           </div>
+
+          {/* Dedicated Profile & Bio Button (Right corner beside avatar/header) */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('profile');
+              const profileElement = document.getElementById('profile-section');
+              if (profileElement) {
+                profileElement.scrollIntoView({ behavior: 'smooth' });
+              }
+            }}
+            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer border ${
+              activeTab === 'profile'
+                ? 'bg-orange-600 text-white border-orange-600 shadow-orange-600/20 shadow-md'
+                : 'bg-stone-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-200 dark:border-zinc-700 hover:border-orange-500 hover:text-orange-600 dark:hover:text-orange-400'
+            }`}
+          >
+            <Edit3 className="w-3.5 h-3.5 text-orange-500" />
+            <span>{isBangla ? 'প্রোফাইল ও বায়ো' : 'Profile & Bio'}</span>
+          </button>
         </div>
 
         {/* Availability Switch */}
@@ -435,6 +465,11 @@ export const TechnicianDashboard: React.FC = () => {
         >
           <Truck className="w-4 h-4" />
           <span>{isBangla ? 'চলমান কাজ ও লাইফসাইকেল' : 'Active Jobs'} ({activeJobs.length})</span>
+          {activeJobsUnreadCount > 0 && (
+            <span className="px-2 py-0.5 rounded-full bg-orange-600 text-white font-black text-[10px] animate-pulse flex items-center gap-1 shadow-sm">
+              💬 {activeJobsUnreadCount} {isBangla ? 'মেসেজ' : 'msg'}
+            </span>
+          )}
         </button>
 
         <button
@@ -603,6 +638,27 @@ export const TechnicianDashboard: React.FC = () => {
             <span className="text-xs text-amber-500 font-bold">{activeJobs.length} in progress</span>
           </div>
 
+          {/* High-Visibility Blinking Message Alert Banner */}
+          {activeJobsUnreadCount > 0 && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-orange-600 via-amber-600 to-orange-600 text-white font-bold text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg shadow-orange-600/30 animate-pulse border border-orange-400">
+              <div className="flex items-center gap-3">
+                <span className="relative flex h-3 w-3 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-90" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-white" />
+                </span>
+                <MessageSquare className="w-5 h-5 shrink-0 fill-current" />
+                <div>
+                  <span className="font-black block sm:inline">
+                    {isBangla ? `কাস্টমারের নিকট থেকে ${activeJobsUnreadCount}টি নতুন মেসেজ এসেছে!` : `${activeJobsUnreadCount} new unread message(s) from customer!`}
+                  </span>
+                  <span className="text-xs font-normal opacity-90 block sm:inline sm:ml-2">
+                    {isBangla ? 'কাজের স্থান বা পৌঁছানোর সময় সমন্বয়ের জন্য নিচে কার্ড থেকে উত্তর দিন।' : 'Reply below from job cards.'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeJobs.length === 0 ? (
             <div className="p-12 text-center bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 space-y-3">
               <Truck className="w-10 h-10 text-zinc-400 mx-auto" />
@@ -694,46 +750,72 @@ export const TechnicianDashboard: React.FC = () => {
                     </div>
 
                     {/* Advance Step Action Button */}
-                    <div className="flex justify-end gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-800">
-                      {job.status === 'ACCEPTED' && (
-                        <button
-                          onClick={() => handleStatusAdvance(job.id, 'ACCEPTED')}
-                          className="px-6 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-extrabold text-xs shadow-md cursor-pointer flex items-center gap-1.5"
-                        >
-                          <Truck className="w-4 h-4" />
-                          <span>{isBangla ? 'রওয়ানা হয়েছি (Start Journey)' : 'Start Journey'}</span>
-                        </button>
-                      )}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+                      {/* Direct Chat with Customer */}
+                      {(() => {
+                        const unreadCount = getUnreadChatCount(job.id, 'TECHNICIAN');
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setChatBookingModal(job)}
+                            className={`px-4 py-2.5 rounded-xl font-extrabold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+                              unreadCount > 0
+                                ? 'bg-orange-600 text-white shadow-md shadow-orange-600/30 animate-pulse'
+                                : 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-orange-500/30 hover:bg-orange-100'
+                            }`}
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                            <span>{isBangla ? 'কাস্টমারকে মেসেজ দিন' : 'Message Customer'}</span>
+                            {unreadCount > 0 && (
+                              <span className="px-1.5 py-0.2 rounded-full bg-white text-orange-600 text-[10px] font-black">
+                                {unreadCount}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })()}
 
-                      {job.status === 'ON_THE_WAY' && (
-                        <button
-                          onClick={() => handleStatusAdvance(job.id, 'ON_THE_WAY')}
-                          className="px-6 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-extrabold text-xs shadow-md cursor-pointer flex items-center gap-1.5"
-                        >
-                          <MapPin className="w-4 h-4" />
-                          <span>{isBangla ? 'ঠিকানায় পৌঁছেছি (Mark Arrived)' : 'Mark Arrived'}</span>
-                        </button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {job.status === 'ACCEPTED' && (
+                          <button
+                            onClick={() => handleStatusAdvance(job.id, 'ACCEPTED')}
+                            className="px-6 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-extrabold text-xs shadow-md cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Truck className="w-4 h-4" />
+                            <span>{isBangla ? 'রওয়ানা হয়েছি (Start Journey)' : 'Start Journey'}</span>
+                          </button>
+                        )}
 
-                      {job.status === 'ARRIVED' && (
-                        <button
-                          onClick={() => handleStatusAdvance(job.id, 'ARRIVED')}
-                          className="px-6 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-extrabold text-xs shadow-md cursor-pointer flex items-center gap-1.5"
-                        >
-                          <Wrench className="w-4 h-4" />
-                          <span>{isBangla ? 'কাজ শুরু করেছি (Start Work)' : 'Start Work'}</span>
-                        </button>
-                      )}
+                        {job.status === 'ON_THE_WAY' && (
+                          <button
+                            onClick={() => handleStatusAdvance(job.id, 'ON_THE_WAY')}
+                            className="px-6 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-extrabold text-xs shadow-md cursor-pointer flex items-center gap-1.5"
+                          >
+                            <MapPin className="w-4 h-4" />
+                            <span>{isBangla ? 'ঠিকানায় পৌঁছেছি (Mark Arrived)' : 'Mark Arrived'}</span>
+                          </button>
+                        )}
 
-                      {job.status === 'IN_PROGRESS' && (
-                        <button
-                          onClick={() => handleStatusAdvance(job.id, 'IN_PROGRESS')}
-                          className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md cursor-pointer flex items-center gap-1.5"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>{isBangla ? 'কাজ শেষ ও বিল তৈরি করুন' : 'Complete & Generate Bill'}</span>
-                        </button>
-                      )}
+                        {job.status === 'ARRIVED' && (
+                          <button
+                            onClick={() => handleStatusAdvance(job.id, 'ARRIVED')}
+                            className="px-6 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-extrabold text-xs shadow-md cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Wrench className="w-4 h-4" />
+                            <span>{isBangla ? 'কাজ শুরু করেছি (Start Work)' : 'Start Work'}</span>
+                          </button>
+                        )}
+
+                        {job.status === 'IN_PROGRESS' && (
+                          <button
+                            onClick={() => handleStatusAdvance(job.id, 'IN_PROGRESS')}
+                            className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md cursor-pointer flex items-center gap-1.5"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>{isBangla ? 'বিল প্রস্তুত ও কাজ সম্পন্ন' : 'Generate Bill'}</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -857,7 +939,7 @@ export const TechnicianDashboard: React.FC = () => {
 
       {/* TAB 5: PROFILE & BIO MANAGEMENT */}
       {activeTab === 'profile' && (
-        <form onSubmit={handleSaveProfile} className="max-w-3xl bg-white dark:bg-zinc-900 rounded-3xl p-6 sm:p-8 border border-zinc-200 dark:border-zinc-800 space-y-6 shadow-sm">
+        <form id="profile-section" onSubmit={handleSaveProfile} className="max-w-3xl bg-white dark:bg-zinc-900 rounded-3xl p-6 sm:p-8 border border-zinc-200 dark:border-zinc-800 space-y-6 shadow-sm">
           <div>
             <h3 className="text-base font-black text-zinc-900 dark:text-white flex items-center gap-2">
               <Edit3 className="w-5 h-5 text-orange-500" />
@@ -1405,6 +1487,15 @@ export const TechnicianDashboard: React.FC = () => {
           invoice={viewInvoice}
           isOpen={!!viewInvoice}
           onClose={() => setViewInvoice(null)}
+        />
+      )}
+
+      {/* Live Messenger Chat Modal */}
+      {chatBookingModal && (
+        <ChatModal
+          booking={chatBookingModal}
+          isOpen={!!chatBookingModal}
+          onClose={() => setChatBookingModal(null)}
         />
       )}
 

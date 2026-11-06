@@ -45,7 +45,9 @@ interface AppContextType {
   addToCompare: (technicianId: string) => boolean;
   removeFromCompare: (technicianId: string) => void;
   clearCompare: () => void;
-  sendMessage: (bookingId: string, text: string, attachmentUrl?: string) => void;
+  sendMessage: (bookingId: string, text: string, attachmentUrl?: string, senderRoleOverride?: 'CUSTOMER' | 'TECHNICIAN') => void;
+  markChatMessagesRead: (bookingId: string, readerRole: 'CUSTOMER' | 'TECHNICIAN') => void;
+  getUnreadChatCount: (bookingId?: string, forRole?: 'CUSTOMER' | 'TECHNICIAN') => number;
   markNotificationRead: (notificationId: string) => void;
   markAllNotificationsRead: () => void;
   submitWarrantyClaim: (claim: Omit<WarrantyClaim, 'id' | 'requestDate' | 'status'>) => void;
@@ -453,37 +455,98 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setComparedTechIds([]);
   };
 
-  const sendMessage = (bookingId: string, text: string, attachmentUrl?: string) => {
-    if (!currentUser) return;
+  const sendMessage = (
+    bookingId: string,
+    text: string,
+    attachmentUrl?: string,
+    senderRoleOverride?: 'CUSTOMER' | 'TECHNICIAN'
+  ) => {
+    const booking = bookings.find(b => b.id === bookingId);
+    const activeRole = senderRoleOverride || (currentUser?.role === 'TECHNICIAN' ? 'TECHNICIAN' : 'CUSTOMER');
+
+    const isCustomer = activeRole === 'CUSTOMER';
+    const senderId = isCustomer
+      ? (currentUser?.role === 'CUSTOMER' ? currentUser.id : booking?.customerId || 'cust-1')
+      : (currentUser?.role === 'TECHNICIAN' ? currentUser.id : booking?.technicianId || 'tech-1');
+    const senderName = isCustomer
+      ? (currentUser?.role === 'CUSTOMER' ? currentUser.name : booking?.customerName || 'গ্রাহক')
+      : (currentUser?.role === 'TECHNICIAN' ? currentUser.name : booking?.technicianName || 'মিস্ত্রি');
+
     const newMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
       bookingId,
-      senderId: currentUser.id,
-      senderRole: currentUser.role,
-      senderName: currentUser.name,
+      senderId,
+      senderRole: isCustomer ? 'CUSTOMER' : 'TECHNICIAN',
+      senderName,
       message: text,
       attachmentUrl,
       timestamp: new Date().toISOString(),
       isRead: false
     };
+
     setChatMessages(prev => [...prev, newMsg]);
 
-    // Simulate technician automated friendly acknowledgment after 1.5s if customer sends message
-    if (currentUser.role === 'CUSTOMER') {
-      setTimeout(() => {
-        const autoReply: ChatMessage = {
-          id: `msg-${Date.now() + 1}`,
-          bookingId,
-          senderId: 'tech-1',
-          senderRole: 'TECHNICIAN',
-          senderName: 'রহিম আহমেদ',
-          message: 'জি ধন্যবাদ স্যার, আমি মেসেজ পেয়েছি। যথা সময়ে হাজির হচ্ছি।',
-          timestamp: new Date().toISOString(),
-          isRead: false
-        };
-        setChatMessages(curr => [...curr, autoReply]);
-      }, 1500);
+    // Create a real notification for the other party (NO RANDOM BOT AUTO-REPLY!)
+    if (isCustomer) {
+      // Customer sent message -> Notify Technician
+      const techNotif: NotificationItem = {
+        id: `notif-chat-${Date.now()}`,
+        userId: booking?.technicianId || 'tech-1',
+        role: 'TECHNICIAN',
+        titleEn: `New message from ${senderName}`,
+        titleBn: `${senderName} (গ্রাহক) নতুন মেসেজ দিয়েছেন`,
+        messageEn: `"${text.length > 50 ? text.slice(0, 50) + '...' : text}"`,
+        messageBn: `"${text.length > 50 ? text.slice(0, 50) + '...' : text}"`,
+        type: 'message',
+        link: `/technician/dashboard`,
+        isRead: false,
+        createdAt: new Date().toISOString()
+      };
+      setNotifications(prev => [techNotif, ...prev]);
+    } else {
+      // Technician sent message -> Notify Customer
+      const custNotif: NotificationItem = {
+        id: `notif-chat-${Date.now()}`,
+        userId: booking?.customerId || 'cust-1',
+        role: 'CUSTOMER',
+        titleEn: `New message from ${senderName}`,
+        titleBn: `${senderName} (মিস্ত্রি) মেসেজের উত্তর দিয়েছেন`,
+        messageEn: `"${text.length > 50 ? text.slice(0, 50) + '...' : text}"`,
+        messageBn: `"${text.length > 50 ? text.slice(0, 50) + '...' : text}"`,
+        type: 'message',
+        link: `/booking/${bookingId}`,
+        isRead: false,
+        createdAt: new Date().toISOString()
+      };
+      setNotifications(prev => [custNotif, ...prev]);
     }
+  };
+
+  const markChatMessagesRead = (bookingId: string, readerRole: 'CUSTOMER' | 'TECHNICIAN') => {
+    setChatMessages(prev =>
+      prev.map(msg => {
+        if (msg.bookingId !== bookingId) return msg;
+        if (readerRole === 'CUSTOMER' && msg.senderRole === 'TECHNICIAN' && !msg.isRead) {
+          return { ...msg, isRead: true };
+        }
+        if (readerRole === 'TECHNICIAN' && msg.senderRole === 'CUSTOMER' && !msg.isRead) {
+          return { ...msg, isRead: true };
+        }
+        return msg;
+      })
+    );
+  };
+
+  const getUnreadChatCount = (bookingId?: string, forRole?: 'CUSTOMER' | 'TECHNICIAN') => {
+    const roleToCheck = forRole || (currentUser?.role === 'TECHNICIAN' ? 'TECHNICIAN' : 'CUSTOMER');
+    return chatMessages.filter(msg => {
+      if (bookingId && msg.bookingId !== bookingId) return false;
+      if (roleToCheck === 'TECHNICIAN') {
+        return msg.senderRole === 'CUSTOMER' && !msg.isRead;
+      } else {
+        return msg.senderRole === 'TECHNICIAN' && !msg.isRead;
+      }
+    }).length;
   };
 
   const markNotificationRead = (notificationId: string) => {
@@ -628,6 +691,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         removeFromCompare,
         clearCompare,
         sendMessage,
+        markChatMessagesRead,
+        getUnreadChatCount,
         markNotificationRead,
         markAllNotificationsRead,
         submitWarrantyClaim,

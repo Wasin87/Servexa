@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, Sparkles, MapPin, Star, ArrowRight, Wrench } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Search, Sparkles, MapPin, Star, Wrench, User } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { diagnoseProblemWithRules } from '../services/problemDiagnosis';
@@ -8,6 +8,7 @@ import { diagnoseProblemWithRules } from '../services/problemDiagnosis';
 export const SearchPage: React.FC = () => {
   const { categories, technicians } = useApp();
   const { t, isBangla } = useLanguage();
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
 
   const diagnosis = query.trim().length > 3 ? diagnoseProblemWithRules(query, categories) : null;
@@ -16,7 +17,7 @@ export const SearchPage: React.FC = () => {
     (tech) =>
       tech.name.toLowerCase().includes(query.toLowerCase()) ||
       tech.primaryArea.toLowerCase().includes(query.toLowerCase()) ||
-      tech.serviceAreas.some(a => a.toLowerCase().includes(query.toLowerCase())) ||
+      tech.serviceAreas.some(a => a.toLowerCase() === query.toLowerCase()) ||
       tech.skills.some(s => s.toLowerCase().includes(query.toLowerCase()))
   );
 
@@ -59,7 +60,7 @@ export const SearchPage: React.FC = () => {
             key={tag}
             type="button"
             onClick={() => setQuery(tag)}
-            className="px-3 py-1 rounded-full bg-stone-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-orange-500 border border-transparent transition-colors"
+            className="px-3 py-1 rounded-full bg-stone-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:border-orange-500 border border-transparent transition-colors cursor-pointer"
           >
             {tag}
           </button>
@@ -125,16 +126,18 @@ export const SearchPage: React.FC = () => {
             {matchedTechs.map((tech) => (
               <div
                 key={tech.id}
-                className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between"
+                onClick={() => navigate(`/professionals/${tech.id}`)}
+                className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-orange-500/60 hover:shadow-lg transition-all duration-200 flex flex-col justify-between cursor-pointer group"
               >
                 <div className="flex items-center gap-3 mb-3">
                   <img
                     src={tech.avatar}
                     alt={tech.name}
-                    className="w-12 h-12 rounded-xl object-cover border border-orange-500"
+                    className="w-13 h-13 rounded-full object-cover ring-2 ring-orange-500/20 group-hover:ring-orange-500 transition-all shadow-sm"
+                    referrerPolicy="no-referrer"
                   />
-                  <div>
-                    <h3 className="font-bold text-xs text-zinc-900 dark:text-zinc-100">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-bold text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 group-hover:text-orange-600 transition-colors truncate">
                       {tech.name}
                     </h3>
                     <div className="flex items-center gap-1 text-[11px] text-amber-500 font-bold">
@@ -143,18 +146,27 @@ export const SearchPage: React.FC = () => {
                       <span className="text-zinc-400 font-normal">({tech.completedJobs} কাজ)</span>
                     </div>
                     <div className="text-[10px] text-zinc-400 flex items-center gap-1 mt-0.5">
-                      <MapPin className="w-3 h-3" />
-                      <span>{tech.primaryArea}, ঢাকা</span>
+                      <MapPin className="w-3 h-3 text-orange-500" />
+                      <span className="truncate">{tech.primaryArea}, ঢাকা</span>
                     </div>
                   </div>
                 </div>
 
-                <Link
-                  to={`/book?techId=${tech.id}`}
-                  className="w-full py-2 text-center text-xs font-bold rounded-lg bg-orange-600 hover:bg-orange-500 text-white transition-colors"
-                >
-                  {t.actions.bookNow}
-                </Link>
+                <div className="grid grid-cols-2 gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
+                  <Link
+                    to={`/book?techId=${tech.id}`}
+                    className="py-1.5 text-center text-xs font-bold rounded-xl bg-orange-600 hover:bg-orange-500 text-white transition-colors"
+                  >
+                    {t.actions.bookNow}
+                  </Link>
+                  <Link
+                    to={`/professionals/${tech.id}`}
+                    className="py-1.5 text-center text-xs font-semibold rounded-xl border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-center gap-1"
+                  >
+                    <User className="w-3 h-3" />
+                    <span>প্রোফাইল</span>
+                  </Link>
+                </div>
               </div>
             ))}
           </div>

@@ -10,6 +10,8 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { AppProvider } from './contexts/AppContext';
 
+import { SplashLoader } from './components/common/SplashLoader';
+
 // Layout
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
@@ -43,6 +45,7 @@ export default function App() {
       <LanguageProvider>
         <AuthProvider>
           <AppProvider>
+            <SplashLoader />
             <BrowserRouter>
               <div className="min-h-screen flex flex-col bg-stone-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-200 selection:bg-orange-500 selection:text-white">
                 <Navbar />

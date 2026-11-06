@@ -1,5 +1,6 @@
 import React from 'react';
 import { Hero } from '../components/home/Hero';
+import { HeroCarouselBanner } from '../components/home/HeroCarouselBanner';
 import { EmergencyBanner } from '../components/home/EmergencyBanner';
 import { PopularServices } from '../components/home/PopularServices';
 import { ProblemWizardSection } from '../components/home/ProblemWizardSection';
@@ -16,6 +17,7 @@ export const HomePage: React.FC = () => {
   return (
     <div className="space-y-4">
       <Hero />
+      <HeroCarouselBanner />
       <EmergencyBanner />
       <PopularServices />
       <ProblemWizardSection />

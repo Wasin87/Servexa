@@ -30,7 +30,7 @@ import { BookingStatus } from '../types';
 export const BookingDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { bookings, updateBookingStatus, submitWarrantyClaim } = useApp();
+  const { bookings, updateBookingStatus, submitWarrantyClaim, getUnreadChatCount } = useApp();
   const { t, isBangla } = useLanguage();
   const { currentUser } = useAuth();
 
@@ -285,14 +285,28 @@ export const BookingDetailPage: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setChatModalOpen(true)}
-                className="py-2 px-3 text-xs font-semibold rounded-lg bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 hover:bg-orange-100 transition-colors flex items-center justify-center gap-1.5"
-              >
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span>মেসেজ দিন</span>
-              </button>
+              {(() => {
+                const unreadCount = getUnreadChatCount(booking.id, currentUser?.role === 'TECHNICIAN' ? 'TECHNICIAN' : 'CUSTOMER');
+                return (
+                  <button
+                    type="button"
+                    onClick={() => setChatModalOpen(true)}
+                    className={`py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      unreadCount > 0
+                        ? 'bg-orange-600 text-white shadow-md shadow-orange-600/30 animate-pulse'
+                        : 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-orange-500/30 hover:bg-orange-100'
+                    }`}
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>{isBangla ? 'মেসেজ দিন' : 'Send Message'}</span>
+                    {unreadCount > 0 && (
+                      <span className="px-1.5 py-0.2 rounded-full bg-white text-orange-600 text-[10px] font-black">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </button>
+                );
+              })()}
               <a
                 href={`tel:${booking.technicianPhone}`}
                 className="py-2 px-3 text-xs font-semibold rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors text-center"

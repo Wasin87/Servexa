@@ -20,13 +20,15 @@ import {
   Receipt,
   User,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  MessageSquare
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { InvoiceModal } from '../components/common/InvoiceModal';
+import { ChatModal } from '../components/common/ChatModal';
 import { RoleSwitcherBar } from '../components/common/RoleSwitcherBar';
 import { ImageUploader } from '../components/common/ImageUploader';
 import { Invoice, Booking, Review, WarrantyClaim } from '../types';
@@ -41,7 +43,8 @@ export const CustomerDashboard: React.FC = () => {
     deleteMaintenanceReminder,
     submitReview,
     submitWarrantyClaim,
-    warranties
+    warranties,
+    getUnreadChatCount
   } = useApp();
   const { currentUser, updateProfile } = useAuth();
   const { t, isBangla } = useLanguage();
@@ -50,6 +53,7 @@ export const CustomerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'bookings' | 'reminders' | 'favorites' | 'invoices' | 'warranties' | 'profile'>('bookings');
   const [bookingFilter, setBookingFilter] = useState<'ALL' | 'ACTIVE' | 'COMPLETED'>('ALL');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [chatModalBooking, setChatModalBooking] = useState<Booking | null>(null);
 
   // Review Modal State
   const [reviewBooking, setReviewBooking] = useState<Booking | null>(null);
@@ -462,13 +466,39 @@ export const CustomerDashboard: React.FC = () => {
 
                     {/* Action Bar */}
                     <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800 text-xs">
-                      <Link
-                        to={`/booking/${booking.id}`}
-                        className="font-bold text-orange-600 dark:text-orange-400 hover:underline flex items-center gap-1"
-                      >
-                        <span>{isBangla ? 'লাইভ ডিসপ্যাচ ও ট্র্যাকিং বিস্তারিত' : 'Live Tracking & Chat'}</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
+                      <div className="flex items-center gap-3">
+                        <Link
+                          to={`/booking/${booking.id}`}
+                          className="font-bold text-orange-600 dark:text-orange-400 hover:underline flex items-center gap-1"
+                        >
+                          <span>{isBangla ? 'লাইভ ডিসপ্যাচ ও ট্র্যাকিং' : 'Live Tracking'}</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
+
+                        {/* Direct Chat Button with Unread Badge */}
+                        {(() => {
+                          const unreadCount = getUnreadChatCount(booking.id, 'CUSTOMER');
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => setChatModalBooking(booking)}
+                              className={`relative px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                                unreadCount > 0
+                                  ? 'bg-orange-600 text-white shadow-md shadow-orange-600/30 animate-pulse'
+                                  : 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-orange-500/30 hover:bg-orange-100'
+                              }`}
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                              <span>{isBangla ? 'মেসেজ ও চ্যাট' : 'Message Pro'}</span>
+                              {unreadCount > 0 && (
+                                <span className="ml-1 px-1.5 py-0.2 rounded-full bg-white text-orange-600 text-[10px] font-black">
+                                  {unreadCount}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })()}
+                      </div>
 
                       <div className="flex items-center gap-2">
                         {booking.invoice && (
@@ -1012,6 +1042,15 @@ export const CustomerDashboard: React.FC = () => {
           invoice={selectedInvoice}
           isOpen={!!selectedInvoice}
           onClose={() => setSelectedInvoice(null)}
+        />
+      )}
+
+      {/* Live Messenger Chat Modal */}
+      {chatModalBooking && (
+        <ChatModal
+          booking={chatModalBooking}
+          isOpen={!!chatModalBooking}
+          onClose={() => setChatModalBooking(null)}
         />
       )}
 

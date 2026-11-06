@@ -60,8 +60,15 @@ export const CustomerReviews: React.FC = () => {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-1 text-amber-500">
-                  {[...Array(t.rating)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star
+                      key={s}
+                      className={`w-4 h-4 ${
+                        s <= Math.round(t.rating || 5)
+                          ? 'fill-amber-400 text-amber-400'
+                          : 'text-zinc-300 dark:text-zinc-700'
+                      }`}
+                    />
                   ))}
                 </div>
                 <span className="text-[11px] text-zinc-400">{t.date}</span>

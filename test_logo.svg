@@ -1,0 +1,52 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <mask id="pinMask">
+      <!-- White base -->
+      <rect width="100" height="100" fill="white" />
+      <!-- Central circle cutout -->
+      <circle cx="50" cy="40" r="14.5" fill="black" />
+      <!-- Two white slits cutting through the pin wall on lower-left -->
+      <g transform="translate(50, 40) rotate(-45)">
+        <rect x="-19" y="-4.6" width="10" height="2.3" fill="black" />
+        <rect x="-19" y="2.3" width="10" height="2.3" fill="black" />
+      </g>
+    </mask>
+
+    <mask id="wrenchJawMask">
+      <rect x="-30" y="-30" width="60" height="60" fill="white" />
+      <!-- Jaw slot cutout -->
+      <circle cx="4.5" cy="0" r="3.0" fill="black" />
+      <rect x="4.5" y="-3.0" width="8" height="6.0" rx="0.5" fill="black" />
+    </mask>
+  </defs>
+
+  <!-- Solid orange color -->
+  <!-- 1. The Pin/House Body with mask -->
+  <path
+    d="M 50 18.5
+       L 31 35.5
+       L 32.5 37.5
+       C 34.5 36.5 34.8 40 34.8 43
+       C 34.8 49 43 58 50 65
+       C 57 58 65.2 49 65.2 43
+       C 65.2 40 65.5 36.5 67.5 37.5
+       L 69 35.5
+       L 62.5 29.5
+       L 62.5 22
+       L 57.5 22
+       L 57.5 25.2
+       Z"
+    fill="#FA4D00"
+    mask="url(#pinMask)"
+  />
+
+  <!-- 2. The Orange Wrench -->
+  <g transform="translate(50, 40) rotate(-45)">
+    <!-- Handle -->
+    <rect x="-18.5" y="-2.3" width="23" height="4.6" fill="#FA4D00" />
+    <!-- Head with jaw cutout -->
+    <g mask="url(#wrenchJawMask)">
+      <circle cx="4.5" cy="0" r="5.8" fill="#FA4D00" />
+    </g>
+  </g>
+</svg>

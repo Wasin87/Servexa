@@ -1,50 +1,39 @@
-import { GoogleGenAI } from '@google/genai';
 import { ServiceCategory } from '../types';
 import { DiagnosisResult, diagnoseProblemWithRules } from './problemDiagnosis';
 
+/**
+ * Diagnoses a user's service issue by calling the server-side Gemini API proxy route (/api/gemini/diagnose).
+ * Automatically falls back to rule-based diagnosis if the server is unreachable or reports an error.
+ */
 export async function diagnoseWithAI(
   userInput: string,
   categories: ServiceCategory[]
 ): Promise<DiagnosisResult> {
-  const apiKey = (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) ||
-                 (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GEMINI_API_KEY);
+  const fallback = diagnoseProblemWithRules(userInput, categories);
 
-  // If no API key or in browser where direct key might not be present, use our robust rule-based engine
-  if (!apiKey) {
-    return diagnoseProblemWithRules(userInput, categories);
+  if (!userInput.trim()) {
+    return fallback;
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
-    const categoryListStr = categories.map(c => `${c.id}: ${c.nameEn} / ${c.nameBn}`).join('\n');
-
-    const prompt = `You are Servexa's smart problem diagnostic engine for Bangladesh home services.
-A user described their problem: "${userInput}"
-
-Available categories:
-${categoryListStr}
-
-Analyze the problem and respond ONLY in valid JSON matching this structure:
-{
-  "categoryId": "one of the available category IDs",
-  "confidence": number between 70 and 99,
-  "recommendedUrgency": "normal" | "today" | "emergency",
-  "keySymptoms": ["symptom1", "symptom2"],
-  "reasoningEn": "Short explanation in English (max 20 words)",
-  "reasoningBn": "সংক্ষিপ্ত কারণ বাংলায় (সর্বোচ্চ ২০ শব্দ)"
-}`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-      }
+    const res = await fetch('/api/gemini/diagnose', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userInput, categories }),
     });
 
-    const parsed = JSON.parse(response.text || '{}');
-    const matchedCategory = categories.find(c => c.id === parsed.categoryId) || categories[0];
-    const fallback = diagnoseProblemWithRules(userInput, categories);
+    if (!res.ok) {
+      console.warn('Server Gemini diagnosis returned status:', res.status);
+      return fallback;
+    }
+
+    const data = await res.json();
+    if (!data || !data.result) {
+      return fallback;
+    }
+
+    const parsed = data.result;
+    const matchedCategory = categories.find((c) => c.id === parsed.categoryId) || categories[0];
 
     return {
       categoryId: matchedCategory.id,
@@ -58,7 +47,133 @@ Analyze the problem and respond ONLY in valid JSON matching this structure:
       reasoningBn: parsed.reasoningBn || fallback.reasoningBn,
     };
   } catch (error) {
-    console.warn('Gemini diagnosis fallback to rules:', error);
-    return diagnoseProblemWithRules(userInput, categories);
+    console.warn('Network issue calling server Gemini diagnosis, using fallback:', error);
+    return fallback;
   }
+}
+
+/**
+ * General text generation calling server-side Gemini API (/api/gemini/generate).
+ */
+export async function generateContentWithAI(
+  prompt: string,
+  options?: { model?: string }
+): Promise<string> {
+  const res = await fetch('/api/gemini/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, model: options?.model }),
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || `Generate failed with status: ${res.status}`);
+  }
+
+  const data = await res.json();
+  return data.text || '';
+}
+
+/**
+ * Streaming content generation calling server-side SSE endpoint (/api/gemini/stream).
+ */
+export async function generateContentStreamWithAI(
+  prompt: string,
+  onChunk: (text: string) => void,
+  options?: { model?: string }
+): Promise<string> {
+  const res = await fetch('/api/gemini/stream', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, model: options?.model }),
+  });
+
+  if (!res.ok || !res.body) {
+    throw new Error(`Streaming failed with status: ${res.status}`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let fullText = '';
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('data:')) continue;
+      const dataStr = trimmed.slice(5).trim();
+      if (dataStr === '[DONE]') continue;
+
+      try {
+        const parsed = JSON.parse(dataStr);
+        if (parsed.text) {
+          fullText += parsed.text;
+          onChunk(parsed.text);
+        }
+      } catch {
+        // ignore partial parse errors
+      }
+    }
+  }
+
+  return fullText;
+}
+
+/**
+ * Connects to the server's WebSocket Live API bridge (/live) for real-time voice and audio.
+ */
+export function createLiveAudioSession(options: {
+  onAudio?: (base64Pcm: string) => void;
+  onText?: (text: string) => void;
+  onError?: (error: string) => void;
+  onClose?: () => void;
+}) {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/live`;
+  const ws = new WebSocket(wsUrl);
+
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      if (data.audio && options.onAudio) options.onAudio(data.audio);
+      if (data.text && options.onText) options.onText(data.text);
+      if (data.error && options.onError) options.onError(data.error);
+    } catch (err) {
+      console.error('Error parsing live socket message:', err);
+    }
+  };
+
+  ws.onerror = () => {
+    if (options.onError) options.onError('WebSocket connection error');
+  };
+
+  ws.onclose = () => {
+    if (options.onClose) options.onClose();
+  };
+
+  return {
+    sendAudio: (base64Pcm16k: string) => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ audio: base64Pcm16k }));
+      }
+    },
+    sendText: (text: string) => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ text }));
+      }
+    },
+    close: () => {
+      ws.close();
+    },
+    get readyState() {
+      return ws.readyState;
+    },
+  };
 }

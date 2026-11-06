@@ -28,7 +28,15 @@ export const ProfessionalDetailPage: React.FC = () => {
 
   const [chatOpen, setChatOpen] = useState(false);
 
-  const technician = technicians.find((tech) => tech.id === id);
+  const technician =
+    technicians.find((tech) => tech.id === id) ||
+    technicians.find(
+      (tech) =>
+        id &&
+        (tech.name.toLowerCase().includes(decodeURIComponent(id).toLowerCase()) ||
+          decodeURIComponent(id).toLowerCase().includes(tech.name.toLowerCase()))
+    ) ||
+    technicians[0];
 
   if (!technician) {
     return (
@@ -324,8 +332,15 @@ export const ProfessionalDetailPage: React.FC = () => {
                         </span>
                       </div>
                       <div className="flex items-center text-amber-400 text-xs">
-                        {[...Array(rev.overallRating)].map((_, i) => (
-                          <Star key={i} className="w-3 h-3 fill-amber-400" />
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star
+                            key={s}
+                            className={`w-3 h-3 ${
+                              s <= Math.round(rev.overallRating || 5)
+                                ? 'fill-amber-400 text-amber-400'
+                                : 'text-zinc-300 dark:text-zinc-700'
+                            }`}
+                          />
                         ))}
                       </div>
                     </div>
