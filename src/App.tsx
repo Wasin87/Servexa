@@ -13,6 +13,7 @@ import { AppProvider } from './contexts/AppContext';
 import { SplashLoader } from './components/common/SplashLoader';
 import { FloatingPWAWidget } from './components/common/FloatingPWAWidget';
 import { ScrollToTopButton } from './components/common/ScrollToTopButton';
+import { ScrollToTop } from './components/common/ScrollToTop';
 
 // Layout
 import { Navbar } from './components/layout/Navbar';
@@ -49,6 +50,7 @@ export default function App() {
           <AppProvider>
             <SplashLoader />
             <BrowserRouter>
+              <ScrollToTop />
               <div className="min-h-screen flex flex-col bg-stone-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-200 selection:bg-orange-500 selection:text-white">
                 <Navbar />
                 <main className="flex-1 pb-16 lg:pb-0">

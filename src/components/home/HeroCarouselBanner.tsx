@@ -128,11 +128,11 @@ export const HeroCarouselBanner: React.FC = () => {
   const { isBangla } = useLanguage();
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Fast & lively auto-scroll (2200ms delay)
+  // Fast & lively auto-scroll (2500ms delay)
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % CAROUSEL_SLIDES.length);
-    }, 2200);
+    }, 2500);
     return () => clearInterval(interval);
   }, []);
 
@@ -149,17 +149,17 @@ export const HeroCarouselBanner: React.FC = () => {
   return (
     <section className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-2 pb-8 sm:pb-12 border-b border-zinc-200/60 dark:border-zinc-800/80">
       {/* Low Height, Wide Aspect Ratio Sleek Banner Container */}
-      <div className="relative w-full h-[230px] sm:h-[260px] md:h-[270px] rounded-2xl sm:rounded-3xl overflow-hidden border border-orange-500/25 dark:border-orange-500/30 shadow-2xl transition-all duration-300 group">
+      <div className="relative w-full h-[220px] sm:h-[250px] md:h-[270px] rounded-2xl sm:rounded-3xl overflow-hidden border border-orange-500/25 dark:border-orange-500/30 shadow-2xl transition-all duration-300 group">
         
         {/* Slide Content Container */}
         <div className="absolute inset-0 bg-stone-100 dark:bg-zinc-950 transition-all duration-500 flex items-center justify-between overflow-hidden">
           
-          {/* Left Text Content Area (Soft Warm Orange Tint in Light mode, Deep Dark Tint in Dark mode with smooth blur) */}
-          <div className="relative z-10 w-full sm:w-7/12 md:w-3/5 h-full px-4 sm:px-8 lg:px-10 py-4 sm:py-6 flex flex-col justify-between bg-gradient-to-r from-orange-100/95 via-amber-50/90 to-transparent dark:from-zinc-950/95 dark:via-zinc-900/85 dark:to-transparent backdrop-blur-md">
+          {/* Left Text Content Area (Responsive width on mobile & desktop so right image is never blank) */}
+          <div className="relative z-10 w-3/5 sm:w-7/12 md:w-3/5 h-full px-3.5 sm:px-8 lg:px-10 py-3.5 sm:py-6 flex flex-col justify-between bg-gradient-to-r from-orange-100/95 via-amber-50/90 to-transparent dark:from-zinc-950/95 dark:via-zinc-900/85 dark:to-transparent backdrop-blur-md">
             <div>
               {/* Badge & Guarantee tag */}
-              <div className="flex items-center gap-2 mb-2 sm:mb-2.5">
-                <span className="px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-orange-500/15 dark:bg-orange-500/20 border border-orange-500/40 text-orange-800 dark:text-orange-400 font-extrabold text-[10px] sm:text-xs uppercase tracking-wider backdrop-blur-md">
+              <div className="flex items-center gap-1.5 mb-1.5 sm:mb-2.5">
+                <span className="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full bg-orange-500/15 dark:bg-orange-500/20 border border-orange-500/40 text-orange-800 dark:text-orange-400 font-extrabold text-[9px] sm:text-xs uppercase tracking-wider backdrop-blur-md truncate max-w-[180px] sm:max-w-none">
                   {isBangla ? currentSlide.badgeBn : currentSlide.badgeEn}
                 </span>
 
@@ -170,21 +170,21 @@ export const HeroCarouselBanner: React.FC = () => {
               </div>
 
               {/* Title */}
-              <h3 className="text-base sm:text-2xl md:text-3xl font-black text-zinc-950 dark:text-white leading-snug sm:leading-tight tracking-tight line-clamp-2">
+              <h3 className="text-sm sm:text-2xl md:text-3xl font-black text-zinc-950 dark:text-white leading-snug sm:leading-tight tracking-tight line-clamp-2">
                 {isBangla ? currentSlide.titleBn : currentSlide.titleEn}
               </h3>
 
               {/* Subtitle */}
-              <p className="text-[11px] sm:text-xs md:text-sm text-zinc-700 dark:text-zinc-300 font-medium mt-1 sm:mt-2 leading-relaxed line-clamp-2 max-w-xl">
+              <p className="text-[10px] sm:text-xs md:text-sm text-zinc-700 dark:text-zinc-300 font-medium mt-1 sm:mt-2 leading-relaxed line-clamp-2 max-w-xl">
                 {isBangla ? currentSlide.subtitleBn : currentSlide.subtitleEn}
               </p>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-2 sm:gap-3 mt-2 sm:mt-3">
+            <div className="flex items-center gap-2 mt-2">
               <Link
                 to={currentSlide.ctaLink}
-                className="px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-xs sm:text-sm shadow-lg shadow-orange-600/30 flex items-center gap-1.5 transition-transform active:scale-95 shrink-0"
+                className="px-3 py-1.5 sm:px-5 sm:py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-[11px] sm:text-sm shadow-lg shadow-orange-600/30 flex items-center gap-1.5 transition-transform active:scale-95 shrink-0"
               >
                 <span>{isBangla ? currentSlide.ctaTextBn : currentSlide.ctaTextEn}</span>
                 <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -193,7 +193,7 @@ export const HeroCarouselBanner: React.FC = () => {
               {currentSlide.secondaryBtnBn && currentSlide.secondaryBtnLink && (
                 <Link
                   to={currentSlide.secondaryBtnLink}
-                  className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-white/90 hover:bg-white dark:bg-white/10 dark:hover:bg-white/20 border border-zinc-300/80 dark:border-white/20 text-zinc-900 dark:text-white font-bold text-xs sm:text-sm backdrop-blur-md transition-colors shrink-0 shadow-xs"
+                  className="hidden sm:inline-flex px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-white/90 hover:bg-white dark:bg-white/10 dark:hover:bg-white/20 border border-zinc-300/80 dark:border-white/20 text-zinc-900 dark:text-white font-bold text-xs sm:text-sm backdrop-blur-md transition-colors shrink-0 shadow-xs"
                 >
                   {isBangla ? currentSlide.secondaryBtnBn : currentSlide.secondaryBtnEn}
                 </Link>
@@ -201,15 +201,15 @@ export const HeroCarouselBanner: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Side Photo - 100% Crisp, High Contrast, Full Color Visibility */}
-          <div className="absolute top-0 right-0 bottom-0 w-1/2 sm:w-5/12 md:w-2/5 overflow-hidden">
+          {/* Right Side Photo - 100% Visible & Responsive on Mobile & Desktop */}
+          <div className="absolute top-0 right-0 bottom-0 w-2/5 sm:w-5/12 md:w-2/5 overflow-hidden">
             <img
               src={currentSlide.image}
               alt={currentSlide.titleEn}
               className="w-full h-full object-cover object-center shadow-2xl transition-transform duration-500"
             />
-            {/* Left Edge Smooth Vignette for Seamless Text Overlay without blurring photo */}
-            <div className="absolute top-0 bottom-0 left-0 w-16 sm:w-24 bg-gradient-to-r from-orange-100/90 via-amber-50/40 to-transparent dark:from-zinc-950 dark:via-zinc-900/60 dark:to-transparent" />
+            {/* Left Edge Smooth Vignette for Seamless Text Overlay */}
+            <div className="absolute top-0 bottom-0 left-0 w-12 sm:w-24 bg-gradient-to-r from-orange-100/90 via-amber-50/40 to-transparent dark:from-zinc-950 dark:via-zinc-900/60 dark:to-transparent" />
           </div>
 
         </div>
@@ -219,30 +219,30 @@ export const HeroCarouselBanner: React.FC = () => {
           onClick={handlePrev}
           type="button"
           aria-label="Previous slide"
-          className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-black/50 hover:bg-orange-600 text-white backdrop-blur-md flex items-center justify-center opacity-80 hover:opacity-100 transition-all cursor-pointer border border-white/20"
+          className="absolute left-1.5 sm:left-2 top-1/2 -translate-y-1/2 z-20 w-6 h-6 sm:w-9 sm:h-9 rounded-full bg-black/50 hover:bg-orange-600 text-white backdrop-blur-md flex items-center justify-center opacity-80 hover:opacity-100 transition-all cursor-pointer border border-white/20"
         >
-          <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+          <ChevronLeft className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
         </button>
 
         <button
           onClick={handleNext}
           type="button"
           aria-label="Next slide"
-          className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-black/50 hover:bg-orange-600 text-white backdrop-blur-md flex items-center justify-center opacity-80 hover:opacity-100 transition-all cursor-pointer border border-white/20"
+          className="absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 z-20 w-6 h-6 sm:w-9 sm:h-9 rounded-full bg-black/50 hover:bg-orange-600 text-white backdrop-blur-md flex items-center justify-center opacity-80 hover:opacity-100 transition-all cursor-pointer border border-white/20"
         >
-          <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+          <ChevronRight className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
         </button>
 
         {/* Carousel Dot Indicators */}
-        <div className="absolute bottom-2 right-4 sm:bottom-3 sm:right-6 z-20 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
+        <div className="absolute bottom-2 right-3 sm:bottom-3 sm:right-6 z-20 flex items-center gap-1 bg-black/60 backdrop-blur-md px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full border border-white/10">
           {CAROUSEL_SLIDES.map((slide, idx) => (
             <button
               key={slide.id}
               onClick={() => setCurrentIndex(idx)}
               className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
                 idx === currentIndex
-                  ? 'w-5 sm:w-6 bg-orange-500'
-                  : 'w-1.5 sm:w-2 bg-white/40 hover:bg-white/80'
+                  ? 'w-4 sm:w-6 bg-orange-500'
+                  : 'w-1 sm:w-2 bg-white/40 hover:bg-white/80'
               }`}
               title={isBangla ? slide.badgeBn : slide.badgeEn}
             />

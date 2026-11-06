@@ -91,8 +91,8 @@ export const MobileNav: React.FC = () => {
       : getCustomerItems();
 
   return (
-    <nav className="fixed bottom-3 left-3 right-3 z-40 max-w-md mx-auto bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl border border-zinc-200/80 dark:border-zinc-800/90 rounded-3xl py-2 px-2 shadow-2xl lg:hidden transition-all safe-bottom">
-      <div className="flex items-center justify-around gap-1">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl border-t border-zinc-200/80 dark:border-zinc-800/90 rounded-t-3xl py-2 px-4 shadow-[0_-10px_30px_rgba(0,0,0,0.15)] lg:hidden transition-all safe-bottom">
+      <div className="flex items-center justify-around gap-1 max-w-md mx-auto">
         {navItems.map((item, idx) => {
           const Icon = item.icon;
           const isItemActive =
