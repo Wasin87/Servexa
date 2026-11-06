@@ -41,7 +41,7 @@ export const CTASection: React.FC = () => {
               to="/heatmap"
               className="inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl border border-white/60 bg-black/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm transition-all"
             >
-              <span>{isBangla ? 'লাইভ হিটম্যাপ' : 'Live Heatmap'}</span>
+              <span>{isBangla ? '📍লাইভ হিটম্যাপ' : 'Live Heatmap'}</span>
             </Link>
           </div>
         </div>
