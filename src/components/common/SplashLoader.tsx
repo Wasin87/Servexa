@@ -28,7 +28,7 @@ export const SplashLoader: React.FC<SplashLoaderProps> = ({
 
   return (
     <div
-      className={`fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-stone-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-all duration-500 ease-out select-none ${
+      className={`fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-stone-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-all duration-500 ease-out select-none px-4 ${
         isFadingOut ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100'
       }`}
     >
@@ -44,11 +44,11 @@ export const SplashLoader: React.FC<SplashLoaderProps> = ({
         }}
       />
 
-      <div className="relative z-10 flex flex-col items-center justify-center">
+      <div className="relative z-10 flex flex-col items-center justify-center max-w-[85vw]">
         
         {/* 1. Location Pin Drop & Spring Bounce Container */}
         <div className="relative z-20 animate-pin-drop flex flex-col items-center">
-          <div className="relative w-28 h-28 flex items-center justify-center drop-shadow-[0_16px_32px_rgba(250,77,0,0.45)]">
+          <div className="relative w-22 h-22 sm:w-28 sm:h-28 flex items-center justify-center drop-shadow-[0_16px_32px_rgba(250,77,0,0.45)]">
             <svg
               viewBox="10 2 80 96"
               fill="none"
@@ -101,28 +101,28 @@ export const SplashLoader: React.FC<SplashLoaderProps> = ({
             </svg>
 
             {/* Pulsing Center Beacon */}
-            <div className="absolute top-[48px] left-[51px] w-3.5 h-3.5 bg-amber-300 rounded-full animate-ping opacity-90" />
+            <div className="absolute top-[38px] left-[40px] sm:top-[48px] sm:left-[51px] w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 bg-amber-300 rounded-full animate-ping opacity-90" />
           </div>
         </div>
 
-        {/* 2. Concentric Ground Oval Ripples (Anchored STRICTLY under the pin's pointy bottom tip - NO left/right rotation) */}
-        <div className="relative -mt-3.5 w-56 h-14 flex items-center justify-center pointer-events-none">
+        {/* 2. Concentric Ground Oval Ripples (Anchored STRICTLY under the pin's pointy bottom tip) */}
+        <div className="relative -mt-3.5 w-40 sm:w-56 h-12 sm:h-14 flex items-center justify-center pointer-events-none">
           
           {/* Deep Contact Point Glow Floor Shadow */}
-          <div className="absolute w-20 h-4 bg-[#FA4D00]/70 dark:bg-[#FA4D00]/80 rounded-[100%] blur-sm animate-pulse" />
+          <div className="absolute w-16 sm:w-20 h-3 sm:h-4 bg-[#FA4D00]/70 dark:bg-[#FA4D00]/80 rounded-[100%] blur-sm animate-pulse" />
 
           {/* Deep Color Concentric Expanding Ground Ripple 1 */}
-          <div className="absolute w-24 h-6 border-[2.5px] border-[#FA4D00] rounded-[100%] animate-ground-ripple shadow-[0_0_20px_rgba(250,77,0,0.7)]" />
+          <div className="absolute w-20 sm:w-24 h-5 sm:h-6 border-[2.5px] border-[#FA4D00] rounded-[100%] animate-ground-ripple shadow-[0_0_20px_rgba(250,77,0,0.7)]" />
 
           {/* Deep Color Concentric Expanding Ground Ripple 2 */}
-          <div className="absolute w-36 h-9 border-[2.5px] border-[#FA4D00]/90 rounded-[100%] animate-ground-ripple [animation-delay:450ms] shadow-[0_0_24px_rgba(250,77,0,0.55)]" />
+          <div className="absolute w-28 sm:w-36 h-7 sm:h-9 border-[2.5px] border-[#FA4D00]/90 rounded-[100%] animate-ground-ripple [animation-delay:450ms] shadow-[0_0_24px_rgba(250,77,0,0.55)]" />
 
           {/* Deep Color Concentric Expanding Ground Ripple 3 */}
-          <div className="absolute w-44 h-11 border-[2px] border-[#FA4D00]/75 rounded-[100%] animate-ground-ripple [animation-delay:900ms]" />
+          <div className="absolute w-36 sm:w-44 h-9 sm:h-11 border-[2px] border-[#FA4D00]/75 rounded-[100%] animate-ground-ripple [animation-delay:900ms]" />
         </div>
 
         {/* 3. Servexa Brand Typography Lockup */}
-        <div className="mt-7 flex items-center text-4xl font-black tracking-tight font-['Outfit','Plus_Jakarta_Sans',sans-serif]">
+        <div className="mt-5 sm:mt-7 flex items-center text-3xl sm:text-4xl font-black tracking-tight font-['Outfit','Plus_Jakarta_Sans',sans-serif]">
           <span className="text-zinc-950 dark:text-white">Serv</span>
           <span className="text-[#FA4D00] ml-0.5">exa</span>
         </div>

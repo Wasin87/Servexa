@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Users, CheckCircle, Receipt, ArrowRight } from 'lucide-react';
+import { Search, Users, CheckCircle, Receipt, ArrowRight, Sparkles } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Link } from 'react-router-dom';
 
@@ -8,92 +8,121 @@ export const HowItWorks: React.FC = () => {
 
   const steps = [
     {
-      num: '০১',
+      num: '01',
       titleEn: 'Describe Problem or Pick Category',
-      titleBn: 'সমস্যা লিখুন অথবা সার্ভিস বাছুন',
-      descEn: 'Tell us in simple Bengali or English what is wrong or choose from 21+ home service categories.',
-      descBn: 'সহজ বাংলা বা ইংরেজিতে আপনার সমস্যাটি লিখুন অথবা আমাদের ২১+ সার্ভিস থেকে বেছে নিন।',
-      icon: Search
+      titleBn: 'সমস্যা লিখুন অথবা সার্ভিস বেছে নিন',
+      descEn: 'Tell us in simple Bengali or English what is wrong or choose from 21+ certified home service categories.',
+      descBn: 'সহজ বাংলা বা ইংরেজিতে আপনার সমস্যাটি লিখুন অথবা আমাদের ২১+ সার্ভিস ক্যাটাগরি থেকে বেছে নিন।',
+      icon: Search,
+      tagBn: 'ধাপ ১',
+      tagEn: 'Step 1'
     },
     {
-      num: '০২',
+      num: '02',
       titleEn: 'Compare & Choose Verified Expert',
-      titleBn: 'মিস্ত্রি যাচাই ও রেটিং তুলনা করুন',
-      descEn: 'Check verified credentials, transparent health score, ratings, and genuine visiting fees.',
-      descBn: 'যাচাইকৃত জাতীয় পরিচয়পত্র, স্বাস্থ্য স্কোর, পূর্বের কাজের রিভিউ ও ভিজিটিং ফি দেখে মিস্ত্রি বেছে নিন।',
-      icon: Users
+      titleBn: 'মিস্ত্রি প্রোফাইল ও রিভিউ তুলনা করুন',
+      descEn: 'Check NID-verified credentials, transparent ratings, customer reviews, and genuine visiting fees.',
+      descBn: 'এনআইডি যাচাইকৃত প্রোফাইল, কাজের স্টার রিভিউ, পূর্বের কাজের পোর্লিও ও ভিজিটিং ফি দেখে মিস্ত্রি বাছুন।',
+      icon: Users,
+      tagBn: 'ধাপ ২',
+      tagEn: 'Step 2'
     },
     {
-      num: '০৩',
-      titleEn: 'Doorstep Service at Your Time',
-      titleBn: 'নির্ধারিত সময়ে দোরগোড়ায় সেবা',
-      descEn: 'Technician arrives with proper safety equipment and tools. Track status live in app.',
-      descBn: 'টেকনিশিয়ান প্রয়োজনীয় যন্ত্রপাতি নিয়ে আপনার ঠিকানায় উপস্থিত হবেন। অ্যাপে লাইভ স্ট্যাটাস দেখুন।',
-      icon: CheckCircle
+      num: '03',
+      titleEn: 'Doorstep Service at Your Schedule',
+      titleBn: 'নির্ধারিত সময়ে দোরগোড়ায় সেবা',
+      descEn: 'Technician arrives with proper safety equipment & tools. Track live dispatch status on map.',
+      descBn: 'টেকনিশিয়ান প্রয়োজনীয় সেফটি গিয়ার ও টুলস নিয়ে আপনার ঠিকানায় পৌঁছাবেন। লাইভ স্ট্যাটাস দেখুন।',
+      icon: CheckCircle,
+      tagBn: 'ধাপ ৩',
+      tagEn: 'Step 3'
     },
     {
-      num: '০৪',
+      num: '04',
       titleEn: 'Digital Invoice & Free Warranty',
-      titleBn: 'ডিজিটাল ইনভয়েস ও সার্ভিস ওয়ারেন্টি',
-      descEn: 'Pay via cash or bKash after work is done. Enjoy up to 30 days free service warranty.',
-      descBn: 'কাজ শেষে ক্যাশ বা বিকাশে পরিশোধ করুন। নিশ্চিত ৭-৩০ দিনের ফ্রি সার্ভিস ওয়ারেন্টির সুবিধা পান।',
-      icon: Receipt
+      titleBn: 'ডিজিটাল ইনভয়েস ও ফ্রি ওয়ারেন্টি',
+      descEn: 'Pay via cash or bKash after work completion. Enjoy up to 30 days guaranteed free service warranty.',
+      descBn: 'কাজ সন্তোষজনকভাবে সম্পন্নের পর ক্যাশ বা বিকাশে পে করুন। নিশ্চিত ৭-৩০ দিনের ফ্রি সার্ভিস ওয়ারেন্টি পান।',
+      icon: Receipt,
+      tagBn: 'ধাপ ৪',
+      tagEn: 'Step 4'
     }
   ];
 
   return (
-    <section className="py-16 sm:py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto text-center space-y-2 mb-12">
-        <div className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider">
-          {isBangla ? 'সহজ ৪টি ধাপ' : 'Effortless Process'}
+    <section className="py-12 sm:py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Header */}
+      <div className="max-w-3xl mx-auto text-center space-y-2 mb-10 sm:mb-14">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-xs font-extrabold text-orange-600 dark:text-orange-400 uppercase tracking-wider">
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>{isBangla ? 'সহজ ৪টি ধাপ' : 'Effortless Process'}</span>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-white tracking-tight">
+
+        <h2 className="text-2xl sm:text-4xl font-black text-zinc-900 dark:text-white tracking-tight leading-tight">
           {isBangla ? 'কীভাবে Servexa কাজ করে?' : 'How Servexa Works'}
         </h2>
-        <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">
+
+        <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 max-w-lg mx-auto leading-relaxed">
           {isBangla
-            ? 'ঝামেলাহীন, স্বচ্ছ ও প্রযুক্তিবান্ধব প্রক্রিয়ায় মিস্ত্রি বুকিং'
-            : 'From reporting your issue to getting guaranteed service at your doorstep.'}
+            ? 'ঝামেলাহীন, শতভাগ স্বচ্ছ ও প্রযুক্তিবান্ধব উপায়ে মাত্র ১ মিনিটে মিস্ত্রি বুকিং'
+            : 'From reporting your issue to getting guaranteed service at your doorstep in minutes.'}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative">
+      {/* 4 Professional Step Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 relative">
         {steps.map((step, idx) => {
           const Icon = step.icon;
           return (
             <div
               key={idx}
-              className="relative p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between"
+              className="group relative p-6 sm:p-7 rounded-3xl bg-white dark:bg-zinc-900/90 border border-zinc-200/90 dark:border-zinc-800 shadow-sm hover:shadow-2xl hover:border-orange-500/50 transition-all duration-300 hover:-translate-y-1.5 flex flex-col justify-between overflow-hidden"
             >
+              {/* Card Top Accent Glow Line */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 via-amber-500 to-[#FA4D00] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold text-base">
+                {/* Header Badge & Large Numbering Visualizer */}
+                <div className="flex items-center justify-between mb-5">
+                  <div className="w-12 h-12 rounded-2xl bg-orange-500/15 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold text-lg group-hover:scale-110 transition-transform duration-300 shadow-sm">
                     <Icon className="w-6 h-6" />
                   </div>
-                  <span className="text-2xl font-black text-zinc-200 dark:text-zinc-800 select-none">
-                    {step.num}
-                  </span>
+
+                  {/* Distinct High-Contrast Step Number Badge */}
+                  <div className="flex items-center gap-1.5 bg-gradient-to-br from-orange-600 to-amber-600 text-white font-black text-xs px-3 py-1 rounded-xl shadow-md">
+                    <span className="opacity-90">{isBangla ? step.tagBn : step.tagEn}</span>
+                    <span className="text-amber-200 font-mono text-sm ml-0.5">{step.num}</span>
+                  </div>
                 </div>
 
-                <h3 className="font-bold text-base text-zinc-900 dark:text-zinc-100 mb-2">
+                {/* Step Title */}
+                <h3 className="font-extrabold text-base sm:text-lg text-zinc-900 dark:text-white mb-2 leading-snug">
                   {isBangla ? step.titleBn : step.titleEn}
                 </h3>
 
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                {/* Step Description */}
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
                   {isBangla ? step.descBn : step.descEn}
                 </p>
+              </div>
+
+              {/* Step Flow Footprint Indicator */}
+              <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between text-[11px] font-bold text-orange-600 dark:text-orange-400">
+                <span>{isBangla ? `ধাপ ${idx + 1} / ৪` : `Step ${idx + 1} of 4`}</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
               </div>
             </div>
           );
         })}
       </div>
 
-      <div className="mt-10 text-center">
+      {/* Bottom CTA Action */}
+      <div className="mt-10 sm:mt-14 text-center">
         <Link
           to="/book"
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs sm:text-sm shadow-md transition-all hover:scale-102"
+          className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs sm:text-sm shadow-xl shadow-orange-600/30 transition-all hover:scale-102 active:scale-98 cursor-pointer"
         >
-          <span>{isBangla ? 'এখনই বুক করুন' : 'Start Your Booking'}</span>
+          <span>{isBangla ? 'এখনই মিস্ত্রি বুক করুন' : 'Start Your Booking Now'}</span>
           <ArrowRight className="w-4 h-4" />
         </Link>
       </div>

@@ -54,7 +54,7 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-[9999] w-full border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-xs transition-colors">
+    <header className="sticky top-0 z-[9999] w-full border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/95 dark:bg-[#0c0806]/95 backdrop-blur-xl shadow-xs transition-colors">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Left: Logo */}
         <div className="shrink-0 flex items-center">
@@ -233,9 +233,6 @@ export const Navbar: React.FC = () => {
 
           {/* Theme Switcher */}
           <ThemeToggle className="scale-90 sm:scale-100 origin-right p-1.5 sm:p-2" />
-
-          {/* PWA In-App Install Prompt */}
-          <PWAInstallButton />
 
           {/* Notifications Dropdown */}
           <div className="relative shrink-0">
@@ -469,18 +466,19 @@ export const Navbar: React.FC = () => {
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-1 sm:gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <Link
                 to="/login"
-                className="px-2 sm:px-3 py-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:text-orange-600 transition-colors"
+                className="px-2.5 sm:px-3.5 py-1.5 text-xs font-bold text-zinc-700 dark:text-zinc-200 hover:text-orange-500 transition-colors"
               >
                 {t.nav.login}
               </Link>
               <Link
                 to="/register"
-                className="px-2.5 sm:px-3.5 py-1.5 text-xs font-bold rounded-xl bg-orange-600 hover:bg-orange-500 text-white shadow-xs transition-colors whitespace-nowrap"
+                className="px-3.5 sm:px-4 py-1.5 text-xs font-black rounded-full bg-[#FA4D00] hover:bg-orange-600 text-white shadow-md transition-all active:scale-95 whitespace-nowrap flex items-center gap-1"
               >
-                {t.nav.register}
+                <span>{t.nav.register}</span>
+                <span className="text-[10px]">←</span>
               </Link>
             </div>
           )}

@@ -11,6 +11,8 @@ import { AuthProvider } from './contexts/AuthContext';
 import { AppProvider } from './contexts/AppContext';
 
 import { SplashLoader } from './components/common/SplashLoader';
+import { FloatingPWAWidget } from './components/common/FloatingPWAWidget';
+import { ScrollToTopButton } from './components/common/ScrollToTopButton';
 
 // Layout
 import { Navbar } from './components/layout/Navbar';
@@ -87,6 +89,8 @@ export default function App() {
                 </main>
                 <Footer />
                 <MobileNav />
+                <FloatingPWAWidget />
+                <ScrollToTopButton />
               </div>
             </BrowserRouter>
           </AppProvider>
