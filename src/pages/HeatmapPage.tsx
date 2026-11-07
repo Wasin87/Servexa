@@ -179,17 +179,42 @@ export const HeatmapPage: React.FC = () => {
               </button>
             </div>
 
-            {/* Zone Search Input */}
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={isBangla ? 'এলাকা খুঁজুন (মিরপুর, উত্তরা...)' : 'Search zone (Mirpur, Uttara...)'}
-                className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-              />
-            </div>
+            {/* Zone Search Input with Search Button */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const q = searchQuery.toLowerCase().trim();
+                const match = DHAKA_HEATMAP_ZONES.find(z =>
+                  z.nameEn.toLowerCase().includes(q) ||
+                  z.nameBn.includes(q)
+                );
+                if (match) {
+                  setSelectedZone(match);
+                  document.getElementById('heatmap-map-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              }}
+              className="relative w-full sm:w-72 flex items-center gap-1.5"
+            >
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={isBangla ? 'এলাকা খুঁজুন (মিরপুর, উত্তরা...)' : 'Search zone (Mirpur, Uttara...)'}
+                  className="w-full pl-8 pr-7 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                />
+                {searchQuery && (
+                  <button type="button" onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 text-xs px-1">✕</button>
+                )}
+              </div>
+              <button
+                type="submit"
+                className="px-3 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs shrink-0 cursor-pointer transition-all shadow-sm"
+              >
+                {isBangla ? 'খুঁজুন' : 'Search'}
+              </button>
+            </form>
           </div>
 
           {activeTab === 'OVERVIEW' && (
