@@ -3,8 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Star, Search, ArrowRight, Flame, Sparkles } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useApp } from '../../contexts/AppContext';
-import heroExactLogoLightImg from '../../assets/images/servexa_hero_exact_uploaded_logo_light_1794059467651.jpg';
-import heroExactLogoDarkImg from '../../assets/images/servexa_hero_exact_uploaded_logo_dark_1794059468280.jpg';
+import heroExactLogoLightImg from '../../assets/images/servexa_hero_light_face_2_1794763940647.jpg';
+import heroExactLogoDarkImg from '../../assets/images/servexa_hero_dark_face_1_1794763936142.jpg';
 
 export const Hero: React.FC = () => {
   const { t, isBangla } = useLanguage();
@@ -31,6 +31,7 @@ export const Hero: React.FC = () => {
           className="w-full h-full object-cover object-[72%_center] sm:object-[70%_center] lg:object-center select-none dark:hidden"
           loading="eager"
           decoding="async"
+          referrerPolicy="no-referrer"
         />
 
         {/* Dark Mode Branded Banner */}
@@ -40,6 +41,7 @@ export const Hero: React.FC = () => {
           className="w-full h-full object-cover object-[72%_center] sm:object-[70%_center] lg:object-center select-none hidden dark:block"
           loading="eager"
           decoding="async"
+          referrerPolicy="no-referrer"
         />
 
         {/* Rich Orange & Theme-Adaptive Gradient Overlays on Left Side */}
