@@ -47,7 +47,7 @@ export const LoginPage: React.FC = () => {
         <div className="p-4 rounded-2xl bg-orange-50/70 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900/50 space-y-2.5">
           <div className="text-[11px] font-bold text-orange-900 dark:text-orange-300 uppercase tracking-wider flex items-center gap-1.5">
             <Lock className="w-3.5 h-3.5 text-orange-600" />
-            <span>{isBangla ? 'ডেমো অ্যাকাউন্ট দ্রুত লগইন (১-ক্লিক)' : 'One-Click Demo Access'}</span>
+            <span>{isBangla ? 'ডেমো অ্যাকাউন্ট দ্রুত লগইন' : 'One-Click Demo Access'}</span>
           </div>
 
           <div className="grid grid-cols-3 gap-2 text-xs">
