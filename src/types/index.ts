@@ -17,7 +17,7 @@ export type BookingStatus =
 export type PaymentStatus = 'PENDING' | 'PAID' | 'CASH_ON_SERVICE' | 'REFUNDED';
 export type PaymentMethod = 'cash' | 'bkash' | 'nagad';
 
-export type WarrantyStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'RESOLVED';
+export type WarrantyStatus = 'REQUESTED' | 'APPROVED' | 'ACCEPTED' | 'ON_THE_WAY' | 'RESOLVED' | 'REJECTED';
 export type DisputeStatus = 'OPEN' | 'UNDER_REVIEW' | 'RESOLVED' | 'REJECTED';
 
 export interface User {
@@ -160,6 +160,8 @@ export interface Booking {
   customerCity: string;
   customerArea: string;
   customerAddress: string;
+  customerLat?: number;
+  customerLng?: number;
   technicianId: string;
   technicianName: string;
   technicianPhone: string;
@@ -204,6 +206,7 @@ export interface Review {
   punctuality: number;
   priceFairness: number;
   comment: string;
+  feedbackTags?: string[];
   serviceName: string;
   createdAt: string;
 }
@@ -239,13 +242,24 @@ export interface WarrantyClaim {
   bookingId: string;
   bookingNumber: string;
   customerId: string;
+  customerName?: string;
+  customerPhone?: string;
+  customerArea?: string;
+  customerAddress?: string;
+  customerLat?: number;
+  customerLng?: number;
   technicianId: string;
+  technicianName?: string;
+  technicianPhone?: string;
   serviceName: string;
   issueDescription: string;
   status: WarrantyStatus;
   requestDate: string;
+  approvedDate?: string;
+  acceptedAt?: string;
   resolvedDate?: string;
   adminNote?: string;
+  technicianNote?: string;
 }
 
 export interface ReportItem {

@@ -56,7 +56,7 @@ type MapMode = 'PROS' | 'HEATMAP';
 type TileLayerType = 'THEMED' | 'SATELLITE' | 'TERRAIN';
 type SortOption = 'recommended' | 'nearest' | 'rating' | 'experience' | 'price' | 'available_first';
 
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_DEMO_KEY || "AIzaSyCeuvMJN64ZFTFVf-Vc9IXfkpFiGi3F5l8";
+export const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.VITE_GOOGLE_MAPS_DEMO_KEY || "AIzaSyCeuvMJN64ZFTFVf-Vc9IXfkpFiGi3F5l8";
 
 const DARK_MAP_STYLE = [
   { elementType: "geometry", stylers: [{ color: "#181a20" }] },

@@ -30,7 +30,7 @@ import { BookingStatus } from '../types';
 export const BookingDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { bookings, updateBookingStatus, submitWarrantyClaim, getUnreadChatCount } = useApp();
+  const { bookings, warranties, reviews, updateBookingStatus, submitWarrantyClaim, getUnreadChatCount } = useApp();
   const { t, isBangla } = useLanguage();
   const { currentUser } = useAuth();
 
@@ -42,6 +42,8 @@ export const BookingDetailPage: React.FC = () => {
   const [warrantyFormOpen, setWarrantyFormOpen] = useState(false);
 
   const booking = bookings.find((b) => b.id === id);
+  const bookingWarranty = booking ? warranties.find(w => w.bookingId === booking.id) : undefined;
+  const bookingReview = booking ? reviews.find(r => r.bookingId === booking.id) : undefined;
 
   if (!booking) {
     return (
@@ -75,15 +77,24 @@ export const BookingDetailPage: React.FC = () => {
 
   const handleWarrantySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser) return;
+    if (!booking || !warrantyDescription.trim()) return;
     submitWarrantyClaim({
       bookingId: booking.id,
       bookingNumber: booking.bookingNumber,
-      customerId: currentUser.id,
+      customerId: currentUser?.id || booking.customerId || 'user-cust-demo',
+      customerName: currentUser?.name || booking.customerName,
+      customerPhone: currentUser?.phone || booking.customerPhone,
+      customerArea: booking.customerArea,
+      customerAddress: booking.customerAddress,
+      customerLat: booking.customerLat,
+      customerLng: booking.customerLng,
       technicianId: booking.technicianId,
+      technicianName: booking.technicianName,
+      technicianPhone: booking.technicianPhone,
       serviceName: booking.serviceNameBn,
-      issueDescription: warrantyDescription
+      issueDescription: warrantyDescription.trim()
     });
+    setWarrantyDescription('');
     setWarrantyFormOpen(false);
     setWarrantySuccessMessage(true);
     setTimeout(() => setWarrantySuccessMessage(false), 5000);
@@ -359,22 +370,71 @@ export const BookingDetailPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setReviewModalOpen(true)}
-                className="w-full py-2.5 text-xs font-bold rounded-xl bg-orange-600 hover:bg-orange-500 text-white shadow-xs transition-colors flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 text-xs font-bold rounded-xl bg-orange-600 hover:bg-orange-500 text-white shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Star className="w-4 h-4" />
-                <span>মতামত ও রেটিং দিন</span>
+                <span>মতামত, ফিডব্যাক ও রেটিং দিন</span>
               </button>
             )}
 
-            {booking.status === 'COMPLETED' && (
+            {bookingReview && (
+              <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-zinc-900 dark:text-white flex items-center gap-1">
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                    <span>আপনার প্রদত্ত ফিডব্যাক</span>
+                  </span>
+                  <span className="px-2 py-0.5 rounded-lg bg-amber-500 text-white font-black text-[11px]">
+                    {bookingReview.overallRating}★
+                  </span>
+                </div>
+                <p className="text-zinc-700 dark:text-zinc-300 italic">"{bookingReview.comment}"</p>
+                {bookingReview.feedbackTags && bookingReview.feedbackTags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {bookingReview.feedbackTags.map((tag, idx) => (
+                      <span key={idx} className="px-2 py-0.5 rounded-md bg-orange-500/15 text-orange-600 dark:text-orange-400 text-[10px] font-bold">
+                        ✓ {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {booking.status === 'COMPLETED' && !bookingWarranty && (
               <button
                 type="button"
                 onClick={() => setWarrantyFormOpen(!warrantyFormOpen)}
-                className="w-full py-2 text-xs font-semibold rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors flex items-center justify-center gap-1.5"
+                className="w-full py-2 text-xs font-semibold rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <ShieldCheck className="w-4 h-4 text-blue-500" />
                 <span>{booking.warrantyDays} দিনের ফ্রি ওয়ারেন্টি দাবি</span>
               </button>
+            )}
+
+            {bookingWarranty && (
+              <div className="p-4 rounded-2xl bg-blue-50/80 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 space-y-1.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-blue-700 dark:text-blue-300 flex items-center gap-1">
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>ওয়ারেন্টি ক্লেইম স্ট্যাটাস</span>
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-black">
+                    {bookingWarranty.status}
+                  </span>
+                </div>
+                <p className="text-zinc-600 dark:text-zinc-300 italic">"{bookingWarranty.issueDescription}"</p>
+                {bookingWarranty.adminNote && (
+                  <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                    🛡️ অ্যাডমিন: {bookingWarranty.adminNote}
+                  </div>
+                )}
+                {bookingWarranty.technicianNote && (
+                  <div className="text-[11px] font-bold text-blue-600 dark:text-blue-400">
+                    🔧 টেকনিশিয়ান: {bookingWarranty.technicianNote}
+                  </div>
+                )}
+              </div>
             )}
 
             {booking.status === 'COMPLETED' && (
@@ -389,7 +449,7 @@ export const BookingDetailPage: React.FC = () => {
 
             {warrantySuccessMessage && (
               <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs text-emerald-800 dark:text-emerald-300 font-medium">
-                ✓ ওয়ারেন্টি আবেদন সফলভাবে জমা হয়েছে! টেকনিশিয়ান ২৪ ঘণ্টার মধ্যে যোগাযোগ করবেন।
+                ✓ ওয়ারেন্টি ক্লেইম অ্যাডমিনের কাছে জমা হয়েছে! অ্যাডমিন অনুমোদন করার পর কাজটি সরাসরি টেকনিশিয়ান {booking.technicianName}-এর কাছে যাবে।
               </div>
             )}
 

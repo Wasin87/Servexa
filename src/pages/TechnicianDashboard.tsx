@@ -32,7 +32,9 @@ import {
   Image as ImageIcon,
   Edit3,
   Sparkles,
-  MessageSquare
+  MessageSquare,
+  Navigation,
+  Route as RouteIcon
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -42,14 +44,18 @@ import { RoleSwitcherBar } from '../components/common/RoleSwitcherBar';
 import { InvoiceModal } from '../components/common/InvoiceModal';
 import { ChatModal } from '../components/common/ChatModal';
 import { ImageUploader } from '../components/common/ImageUploader';
-import { AvailabilityStatus, Booking, Invoice, PortfolioItem, Technician } from '../types';
+import { TechnicianRouteMap } from '../components/map/TechnicianRouteMap';
+import { AvailabilityStatus, Booking, Invoice, PortfolioItem, Technician, WarrantyClaim } from '../types';
 
 export const TechnicianDashboard: React.FC = () => {
   const {
     bookings,
     technicians,
     categories,
+    warranties,
+    reviews,
     updateBookingStatus,
+    updateWarrantyStatus,
     generateInvoice,
     updateTechnicianAvailability,
     updateTechnicianProfile,
@@ -61,13 +67,33 @@ export const TechnicianDashboard: React.FC = () => {
   const { t, isBangla } = useLanguage();
   const navigate = useNavigate();
 
-  // Find technician record
-  const currentTech: Technician = technicians.find(t => t.id === 'tech-1' || t.userId === currentUser?.id) || technicians[0];
+  // Active technician selection (defaults to logged-in user's linked tech or tech-1)
+  const defaultTechId = technicians.find(tech => tech.userId === currentUser?.id)?.id || 'tech-1';
+  const [selectedTechId, setSelectedTechId] = useState<string>(defaultTechId);
+  const currentTech: Technician = technicians.find(tech => tech.id === selectedTechId) || technicians[0];
 
-  const [activeTab, setActiveTab] = useState<'requests' | 'active' | 'completed' | 'earnings' | 'profile' | 'skills' | 'portfolio'>('requests');
+  const [activeTab, setActiveTab] = useState<'requests' | 'active' | 'warranties' | 'completed' | 'reviews' | 'earnings' | 'profile' | 'skills' | 'portfolio'>('requests');
   const [invoiceModalBooking, setInvoiceModalBooking] = useState<Booking | null>(null);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
   const [chatBookingModal, setChatBookingModal] = useState<Booking | null>(null);
+  const [expandedRouteMapIds, setExpandedRouteMapIds] = useState<Record<string, boolean>>({});
+  const [fullscreenRouteBooking, setFullscreenRouteBooking] = useState<Booking | null>(null);
+  const [warrantyNotesInput, setWarrantyNotesInput] = useState<Record<string, string>>({});
+
+  const isRouteMapOpen = (job: Booking) => {
+    if (expandedRouteMapIds[job.id] !== undefined) {
+      return expandedRouteMapIds[job.id];
+    }
+    return job.status === 'ON_THE_WAY';
+  };
+
+  const toggleRouteMap = (job: Booking) => {
+    const currentlyOpen = isRouteMapOpen(job);
+    setExpandedRouteMapIds((prev) => ({
+      ...prev,
+      [job.id]: !currentlyOpen
+    }));
+  };
 
   // Success Toast state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -135,11 +161,27 @@ export const TechnicianDashboard: React.FC = () => {
     }
   }, [currentTech.id]);
 
-  // Filter bookings for this technician
-  const techBookings = bookings.filter(b => b.technicianId === currentTech.id || true);
+  // Filter bookings strictly for this technician
+  const techBookings = bookings.filter(b => b.technicianId === currentTech.id);
   const pendingRequests = techBookings.filter(b => b.status === 'REQUESTED');
   const activeJobs = techBookings.filter(b => ['ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS'].includes(b.status));
   const completedJobs = techBookings.filter(b => b.status === 'COMPLETED');
+
+  // Admin-approved Warranty Claims strictly assigned to this technician
+  const techWarranties = warranties.filter(
+    w => w.technicianId === currentTech.id && ['APPROVED', 'ACCEPTED', 'ON_THE_WAY', 'RESOLVED'].includes(w.status)
+  );
+  const pendingTechWarranties = techWarranties.filter(w => w.status === 'APPROVED');
+  const activeTechWarranties = techWarranties.filter(w => ['ACCEPTED', 'ON_THE_WAY'].includes(w.status));
+  const unreadWarrantyCount = pendingTechWarranties.length + activeTechWarranties.length;
+
+  // Check if another technician has awaiting warranty claims (helps demo switching)
+  const otherTechPendingWarranty = warranties.find(
+    w => w.technicianId !== currentTech.id && ['APPROVED', 'ACCEPTED', 'ON_THE_WAY'].includes(w.status)
+  );
+
+  // Customer feedback / reviews for this technician
+  const techReviews = reviews.filter(r => r.technicianId === currentTech.id);
 
   // Total unread chat messages for active jobs
   const activeJobsUnreadCount = activeJobs.reduce((acc, job) => acc + getUnreadChatCount(job.id, 'TECHNICIAN'), 0);
@@ -150,15 +192,92 @@ export const TechnicianDashboard: React.FC = () => {
   const weekEarnings = 7800;
   const monthEarnings = 31200;
 
+  const buildWarrantyBooking = (claim: WarrantyClaim): Booking => {
+    const original = bookings.find(b => b.id === claim.bookingId);
+    if (original) {
+      return {
+        ...original,
+        id: claim.id,
+        bookingNumber: claim.bookingNumber,
+        customerName: claim.customerName || original.customerName,
+        customerPhone: claim.customerPhone || original.customerPhone,
+        customerArea: claim.customerArea || original.customerArea,
+        customerAddress: claim.customerAddress || original.customerAddress,
+        customerLat: claim.customerLat ?? original.customerLat,
+        customerLng: claim.customerLng ?? original.customerLng,
+        status: claim.status === 'ON_THE_WAY' ? 'ON_THE_WAY' : 'ACCEPTED'
+      };
+    }
+    return {
+      id: claim.id,
+      bookingNumber: claim.bookingNumber,
+      customerId: claim.customerId,
+      customerName: claim.customerName || 'গ্রাহক',
+      customerPhone: claim.customerPhone || '01700-000000',
+      customerCity: 'Dhaka',
+      customerArea: claim.customerArea || 'Dhanmondi',
+      customerAddress: claim.customerAddress || 'Dhanmondi, Dhaka',
+      customerLat: claim.customerLat,
+      customerLng: claim.customerLng,
+      technicianId: currentTech.id,
+      technicianName: currentTech.name,
+      technicianPhone: currentTech.phone,
+      technicianAvatar: currentTech.avatar,
+      categoryId: 'repair',
+      serviceNameEn: claim.serviceName,
+      serviceNameBn: claim.serviceName,
+      problemDescription: claim.issueDescription,
+      mediaUrls: [],
+      date: claim.requestDate,
+      timeSlot: 'Warranty Re-Service',
+      urgency: 'today',
+      estimatedVisitingFee: 0,
+      estimatedLabourMin: 0,
+      estimatedLabourMax: 0,
+      estimatedTotalMin: 0,
+      estimatedTotalMax: 0,
+      status: claim.status === 'ON_THE_WAY' ? 'ON_THE_WAY' : 'ACCEPTED',
+      statusHistory: [],
+      paymentStatus: 'PAID',
+      paymentMethod: 'cash',
+      warrantyDays: 7,
+      createdAt: claim.requestDate,
+      updatedAt: claim.requestDate
+    };
+  };
+
+  const handleWarrantyAction = (claim: WarrantyClaim, nextStatus: WarrantyClaim['status']) => {
+    const customNote = (warrantyNotesInput[claim.id] || '').trim();
+    if (nextStatus === 'ACCEPTED') {
+      updateWarrantyStatus(claim.id, 'ACCEPTED', 'টেকনিশিয়ান ওয়ারেন্টি ক্লেইম পিক করেছেন।');
+      setExpandedRouteMapIds(prev => ({ ...prev, [claim.id]: true }));
+      showToast(`ওয়ারেন্টি কাজ #${claim.bookingNumber} পিক করা হয়েছে!`);
+    } else if (nextStatus === 'ON_THE_WAY') {
+      updateWarrantyStatus(claim.id, 'ON_THE_WAY', 'টেকনিশিয়ান গ্রাহকের ঠিকানায় রওনা হয়েছেন।');
+      setExpandedRouteMapIds(prev => ({ ...prev, [claim.id]: true }));
+      showToast('রওনা শুরু! ম্যাপ অনুসরণ করে গ্রাহকের বাসায় পৌঁছে ফ্রি ওয়ারেন্টি সার্ভিস দিন।');
+    } else if (nextStatus === 'RESOLVED') {
+      updateWarrantyStatus(
+        claim.id,
+        'RESOLVED',
+        customNote || 'সমস্যা পরীক্ষা করে ফ্রি ওয়ারেন্টি সার্ভিসিং সফলভাবে সম্পন্ন করা হয়েছে।'
+      );
+      showToast(`ওয়ারেন্টি সার্ভিস #${claim.bookingNumber} সম্পন্ন হিসেবে মার্ক করা হয়েছে!`);
+    }
+  };
+
   const handleStatusAdvance = (bookingId: string, currentStatus: string) => {
     switch (currentStatus) {
       case 'REQUESTED':
         updateBookingStatus(bookingId, 'ACCEPTED', 'Technician accepted the job', 'মিস্ত্রি কাজ গ্রহণ করেছেন');
-        showToast('কাজটি সফলভাবে গ্রহণ করা হয়েছে!');
+        setExpandedRouteMapIds((prev) => ({ ...prev, [bookingId]: true }));
+        setActiveTab('active');
+        showToast('কাজটি গ্রহণ করা হয়েছে! গ্রাহকের লোকেশন ম্যাপে দেখুন।');
         break;
       case 'ACCEPTED':
         updateBookingStatus(bookingId, 'ON_THE_WAY', 'Technician is on the way to address', 'মিস্ত্রি ঠিকানার উদ্দেশ্যে রওনা হয়েছেন');
-        showToast('স্ট্যাটাস: গ্রাহকের ঠিকানায় রওয়ানা হয়েছেন');
+        setExpandedRouteMapIds((prev) => ({ ...prev, [bookingId]: true }));
+        showToast('রওনা শুরু! হলুদ-কমলা সংক্ষিপ্ত পথ অনুসরণ করে গ্রাহকের ঠিকানায় যান।');
         break;
       case 'ON_THE_WAY':
         updateBookingStatus(bookingId, 'ARRIVED', 'Technician arrived at location', 'মিস্ত্রি ঠিকানায় পৌঁছে গেছেন');
@@ -236,7 +355,7 @@ export const TechnicianDashboard: React.FC = () => {
   const handleSaveSkillsAndRates = (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedSkills.length === 0) {
-      alert('কমপক্ষে একটি কাজের দক্ষতা নির্বাচন করুন!');
+      showToast('কমপক্ষে একটি কাজের দক্ষতা নির্বাচন করুন!');
       return;
     }
     updateTechnicianProfile(currentTech.id, {
@@ -279,10 +398,8 @@ export const TechnicianDashboard: React.FC = () => {
   };
 
   const handleDeletePortfolioItem = (itemId: string) => {
-    if (confirm('আপনি কি নিশ্চিতভাবে এই পোর্টফোলিও ছবিটি মুছে ফেলতে চান?')) {
-      deleteTechnicianPortfolio(currentTech.id, itemId);
-      showToast('পোর্টফোলিও আইটেম অপসারিত হয়েছে!');
-    }
+    deleteTechnicianPortfolio(currentTech.id, itemId);
+    showToast('পোর্টফোলিও আইটেম অপসারিত হয়েছে!');
   };
 
   return (
@@ -333,25 +450,48 @@ export const TechnicianDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Dedicated Profile & Bio Button (Right corner beside avatar/header) */}
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('profile');
-              const profileElement = document.getElementById('profile-section');
-              if (profileElement) {
-                profileElement.scrollIntoView({ behavior: 'smooth' });
-              }
-            }}
-            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer border ${
-              activeTab === 'profile'
-                ? 'bg-orange-600 text-white border-orange-600 shadow-orange-600/20 shadow-md'
-                : 'bg-stone-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-200 dark:border-zinc-700 hover:border-orange-500 hover:text-orange-600 dark:hover:text-orange-400'
-            }`}
-          >
-            <Edit3 className="w-3.5 h-3.5 text-orange-500" />
-            <span>{isBangla ? 'প্রোফাইল ও বায়ো' : 'Profile & Bio'}</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {/* Active Technician Switcher for Multi-Technician Dispatch Preview */}
+            <div className="flex items-center gap-1.5 bg-stone-100 dark:bg-zinc-800 px-2.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs">
+              <span className="text-[11px] font-bold text-zinc-500">{isBangla ? 'টেকনিশিয়ান:' : 'Pro:'}</span>
+              <select
+                value={currentTech.id}
+                onChange={(e) => setSelectedTechId(e.target.value)}
+                className="bg-transparent font-bold text-zinc-900 dark:text-white focus:outline-none cursor-pointer text-xs max-w-[165px]"
+              >
+                {technicians.map(tech => {
+                  const techWarCount = warranties.filter(
+                    w => w.technicianId === tech.id && ['APPROVED', 'ACCEPTED', 'ON_THE_WAY'].includes(w.status)
+                  ).length;
+                  return (
+                    <option key={tech.id} value={tech.id} className="bg-white dark:bg-zinc-900">
+                      {tech.name}{techWarCount > 0 ? ` (🛡️ ${techWarCount})` : ''}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            {/* Dedicated Profile & Bio Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('profile');
+                const profileElement = document.getElementById('profile-section');
+                if (profileElement) {
+                  profileElement.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer border ${
+                activeTab === 'profile'
+                  ? 'bg-orange-600 text-white border-orange-600 shadow-orange-600/20 shadow-md'
+                  : 'bg-stone-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-200 dark:border-zinc-700 hover:border-orange-500 hover:text-orange-600 dark:hover:text-orange-400'
+              }`}
+            >
+              <Edit3 className="w-3.5 h-3.5 text-orange-500" />
+              <span>{isBangla ? 'প্রোফাইল ও বায়ো' : 'Profile & Bio'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Availability Switch */}
@@ -441,6 +581,55 @@ export const TechnicianDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Alert Banner when Approved Warranty Claims await Pickup */}
+      {pendingTechWarranties.length > 0 && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-orange-600 text-white shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-blue-400/40">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-white/15 shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="font-black text-xs sm:text-sm">
+                {isBangla
+                  ? `🛡️ অ্যাডমিন-অনুমোদিত ${pendingTechWarranties.length}টি ওয়ারেন্টি ক্লেইম আপনার কাছে পাঠানো হয়েছে!`
+                  : `${pendingTechWarranties.length} Admin-Approved Warranty Claim(s) assigned to you!`}
+              </div>
+              <p className="text-[11px] opacity-90">
+                {isBangla
+                  ? 'এটি ফ্রি ওয়ারেন্টি রি-সার্ভিস কাজ। "ওয়ারেন্টি ক্লেইম" ট্যাব থেকে কাজটি পিক করে গ্রাহকের ঠিকানায় যান।'
+                  : 'Open the Warranty Claims tab to pick this warranty job and navigate to the customer.'}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('warranties')}
+            className="px-4 py-2 rounded-xl bg-white text-orange-600 font-black text-xs shadow-sm hover:bg-stone-100 cursor-pointer shrink-0 self-start sm:self-auto"
+          >
+            {isBangla ? 'ওয়ারেন্টি ক্লেইম দেখুন →' : 'View Warranty Claims →'}
+          </button>
+        </div>
+      )}
+
+      {/* Helpful Demo Switch Notice if another Technician has an approved Warranty Claim */}
+      {pendingTechWarranties.length === 0 && otherTechPendingWarranty && (
+        <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+          <div className="text-amber-800 dark:text-amber-200 font-semibold">
+            💡 <span className="font-black">{otherTechPendingWarranty.technicianName || technicians.find(t => t.id === otherTechPendingWarranty.technicianId)?.name}</span>-এর জন্য অ্যাডমিন-অনুমোদিত ওয়ারেন্টি ক্লেইম (#{otherTechPendingWarranty.bookingNumber}) রয়েছে।
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedTechId(otherTechPendingWarranty.technicianId);
+              setActiveTab('warranties');
+            }}
+            className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs cursor-pointer self-start sm:self-auto"
+          >
+            {isBangla ? 'ওই টেকনিশিয়ানের ড্যাশবোর্ডে যান →' : 'Switch to Assigned Technician →'}
+          </button>
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="flex border-b border-zinc-200 dark:border-zinc-800 gap-2 sm:gap-6 text-xs font-bold overflow-x-auto no-scrollbar pb-1">
         <button
@@ -473,6 +662,23 @@ export const TechnicianDashboard: React.FC = () => {
         </button>
 
         <button
+          onClick={() => setActiveTab('warranties')}
+          className={`pb-3 transition-colors border-b-2 whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+            activeTab === 'warranties'
+              ? 'border-orange-600 text-orange-600 dark:text-orange-400 font-black'
+              : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4 text-blue-500" />
+          <span>{isBangla ? 'ওয়ারেন্টি ক্লেইম' : 'Warranty Claims'} ({techWarranties.length})</span>
+          {unreadWarrantyCount > 0 && (
+            <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white font-black text-[10px] animate-pulse shadow-sm">
+              {unreadWarrantyCount}
+            </span>
+          )}
+        </button>
+
+        <button
           onClick={() => setActiveTab('completed')}
           className={`pb-3 transition-colors border-b-2 whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
             activeTab === 'completed'
@@ -482,6 +688,18 @@ export const TechnicianDashboard: React.FC = () => {
         >
           <CheckCircle2 className="w-4 h-4" />
           <span>{isBangla ? 'সম্পন্ন কাজের হিস্ট্রি' : 'Completed Jobs'} ({completedJobs.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('reviews')}
+          className={`pb-3 transition-colors border-b-2 whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+            activeTab === 'reviews'
+              ? 'border-orange-600 text-orange-600 dark:text-orange-400 font-black'
+              : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+          }`}
+        >
+          <Star className="w-4 h-4 text-amber-500" />
+          <span>{isBangla ? 'গ্রাহক ফিডব্যাক' : 'Customer Reviews'} ({techReviews.length})</span>
         </button>
 
         <button
@@ -607,19 +825,50 @@ export const TechnicianDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                  {isRouteMapOpen(req) && (
+                    <div className="pt-1 animate-in fade-in duration-200">
+                      <TechnicianRouteMap
+                        booking={req}
+                        technician={currentTech}
+                        height="300px"
+                        compact
+                        onExpandModal={() => setFullscreenRouteBooking(req)}
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-zinc-100 dark:border-zinc-800">
                     <button
-                      onClick={() => updateBookingStatus(req.id, 'CANCELLED', 'Technician unavailable', 'মিস্ত্রি ব্যস্ত থাকার কারণে বাতিল')}
-                      className="px-4 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold text-xs hover:bg-zinc-100 cursor-pointer"
+                      type="button"
+                      onClick={() => toggleRouteMap(req)}
+                      className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer border transition-colors ${
+                        isRouteMapOpen(req)
+                          ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                          : 'bg-amber-50 dark:bg-amber-950/30 border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100'
+                      }`}
                     >
-                      {isBangla ? 'বাতিল করুন' : 'Decline'}
+                      <Navigation className="w-3.5 h-3.5" />
+                      <span>
+                        {isRouteMapOpen(req)
+                          ? (isBangla ? 'ম্যাপ লুকান' : 'Hide Map')
+                          : (isBangla ? 'ম্যাপে গ্রাহকের লোকেশন ও রুট দেখুন' : 'View Customer Route on Map')}
+                      </span>
                     </button>
-                    <button
-                      onClick={() => handleStatusAdvance(req.id, 'REQUESTED')}
-                      className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-xs shadow-md shadow-orange-600/20 cursor-pointer active:scale-95"
-                    >
-                      {isBangla ? '✅ কাজ গ্রহণ করুন (Accept)' : 'Accept Job'}
-                    </button>
+
+                    <div className="flex items-center gap-2 ml-auto">
+                      <button
+                        onClick={() => updateBookingStatus(req.id, 'CANCELLED', 'Technician unavailable', 'মিস্ত্রি ব্যস্ত থাকার কারণে বাতিল')}
+                        className="px-4 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold text-xs hover:bg-zinc-100 cursor-pointer"
+                      >
+                        {isBangla ? 'বাতিল করুন' : 'Decline'}
+                      </button>
+                      <button
+                        onClick={() => handleStatusAdvance(req.id, 'REQUESTED')}
+                        className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-xs shadow-md shadow-orange-600/20 cursor-pointer active:scale-95"
+                      >
+                        {isBangla ? '✅ কাজ গ্রহণ করুন (Accept)' : 'Accept Job'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -749,31 +998,63 @@ export const TechnicianDashboard: React.FC = () => {
                       </div>
                     </div>
 
+                    {/* Technician-Only Live Customer Route & Shortest Path Navigation Map */}
+                    {isRouteMapOpen(job) && (
+                      <div className="animate-in fade-in duration-200">
+                        <TechnicianRouteMap
+                          booking={job}
+                          technician={currentTech}
+                          height="340px"
+                          onExpandModal={() => setFullscreenRouteBooking(job)}
+                        />
+                      </div>
+                    )}
+
                     {/* Advance Step Action Button */}
                     <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-800">
-                      {/* Direct Chat with Customer */}
-                      {(() => {
-                        const unreadCount = getUnreadChatCount(job.id, 'TECHNICIAN');
-                        return (
-                          <button
-                            type="button"
-                            onClick={() => setChatBookingModal(job)}
-                            className={`px-4 py-2.5 rounded-xl font-extrabold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
-                              unreadCount > 0
-                                ? 'bg-orange-600 text-white shadow-md shadow-orange-600/30 animate-pulse'
-                                : 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-orange-500/30 hover:bg-orange-100'
-                            }`}
-                          >
-                            <MessageSquare className="w-4 h-4" />
-                            <span>{isBangla ? 'কাস্টমারকে মেসেজ দিন' : 'Message Customer'}</span>
-                            {unreadCount > 0 && (
-                              <span className="px-1.5 py-0.2 rounded-full bg-white text-orange-600 text-[10px] font-black">
-                                {unreadCount}
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })()}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Toggle Customer Location & Shortest Route Map */}
+                        <button
+                          type="button"
+                          onClick={() => toggleRouteMap(job)}
+                          className={`px-4 py-2.5 rounded-xl font-extrabold text-xs transition-all flex items-center gap-1.5 cursor-pointer border ${
+                            isRouteMapOpen(job)
+                              ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white border-amber-500 shadow-md shadow-amber-500/20'
+                              : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-500/40 hover:bg-amber-100'
+                          }`}
+                        >
+                          <RouteIcon className="w-4 h-4" />
+                          <span>
+                            {isRouteMapOpen(job)
+                              ? (isBangla ? 'রুট ম্যাপ বন্ধ করুন' : 'Hide Route Map')
+                              : (isBangla ? 'গ্রাহকের লোকেশন ও রুট ম্যাপ' : 'Customer Route Map')}
+                          </span>
+                        </button>
+
+                        {/* Direct Chat with Customer */}
+                        {(() => {
+                          const unreadCount = getUnreadChatCount(job.id, 'TECHNICIAN');
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => setChatBookingModal(job)}
+                              className={`px-4 py-2.5 rounded-xl font-extrabold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+                                unreadCount > 0
+                                  ? 'bg-orange-600 text-white shadow-md shadow-orange-600/30 animate-pulse'
+                                  : 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-orange-500/30 hover:bg-orange-100'
+                              }`}
+                            >
+                              <MessageSquare className="w-4 h-4" />
+                              <span>{isBangla ? 'কাস্টমারকে মেসেজ দিন' : 'Message Customer'}</span>
+                              {unreadCount > 0 && (
+                                <span className="px-1.5 py-0.2 rounded-full bg-white text-orange-600 text-[10px] font-black">
+                                  {unreadCount}
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })()}
+                      </div>
 
                       <div className="flex items-center gap-2">
                         {job.status === 'ACCEPTED' && (
@@ -813,6 +1094,259 @@ export const TechnicianDashboard: React.FC = () => {
                           >
                             <CheckCircle2 className="w-4 h-4" />
                             <span>{isBangla ? 'বিল প্রস্তুত ও কাজ সম্পন্ন' : 'Generate Bill'}</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB: WARRANTY CLAIMS (ADMIN APPROVED -> ASSIGNED TECHNICIAN) */}
+      {activeTab === 'warranties' && (
+        <div className="space-y-4">
+          <div className="p-5 rounded-3xl bg-gradient-to-r from-blue-600/10 via-indigo-500/5 to-orange-500/10 border border-blue-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-base font-black text-zinc-900 dark:text-white flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <span>{isBangla ? 'ওয়ারেন্টি ক্লেইম কাজসমূহ (অ্যাডমিন অনুমোদিত)' : 'Approved Warranty Claim Jobs'}</span>
+              </h3>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
+                {isBangla
+                  ? 'আপনার পূর্বের সম্পন্ন করা যেসব কাজে গ্রাহক ওয়ারেন্টি ক্লেইম করেছেন এবং অ্যাডমিন অনুমোদন দিয়েছেন — সেগুলো এখান থেকে পিক করে গ্রাহকের বাসায় ফ্রি সার্ভিস দিন।'
+                  : 'Warranty claims approved by Admin for your previous jobs appear here. Pick the warranty job and navigate to resolve.'}
+              </p>
+            </div>
+            <span className="px-3 py-1.5 rounded-xl bg-blue-600 text-white font-black text-xs shrink-0 self-start">
+              🛡️ ফ্রি ওয়ারেন্টি সার্ভিস (৳০ ফি)
+            </span>
+          </div>
+
+          {techWarranties.length === 0 ? (
+            <div className="p-12 text-center bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 space-y-3">
+              <ShieldCheck className="w-10 h-10 text-zinc-400 mx-auto" />
+              <h4 className="font-bold text-sm text-zinc-900 dark:text-white">
+                {isBangla ? 'বর্তমানে আপনার কোনো অনুমোদিত ওয়ারেন্টি ক্লেইম নেই' : 'No approved warranty claims for you right now'}
+              </h4>
+              <p className="text-xs text-zinc-500">
+                {isBangla
+                  ? 'কোনো গ্রাহক আপনার কাজের ওপর ওয়ারেন্টি ক্লেইম করলে অ্যাডমিনের অনুমোদনের পর তা সরাসরি এখানে চলে আসবে।'
+                  : 'Once an admin approves a customer warranty claim for your job, it will appear here.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {techWarranties.map((w) => {
+                const relatedBooking = bookings.find(b => b.id === w.bookingId);
+                const warrantyAsBooking = buildWarrantyBooking(w);
+                const isMapExpanded =
+                  expandedRouteMapIds[w.id] !== undefined
+                    ? expandedRouteMapIds[w.id]
+                    : w.status === 'ACCEPTED' || w.status === 'ON_THE_WAY';
+
+                const stepNumber =
+                  w.status === 'APPROVED' ? 1 :
+                  w.status === 'ACCEPTED' ? 2 :
+                  w.status === 'ON_THE_WAY' ? 3 : 4;
+
+                const statusTextMap: Record<WarrantyClaim['status'], string> = {
+                  REQUESTED: 'অনুমোদনের অপেক্ষায়',
+                  APPROVED: 'অ্যাডমিন অনুমোদিত · পিক করার অপেক্ষায়',
+                  ACCEPTED: 'আপনি পিক করেছেন (Picked)',
+                  ON_THE_WAY: 'গ্রাহকের বাসায় রওনা হয়েছেন',
+                  RESOLVED: 'ওয়ারেন্টি সার্ভিস সম্পন্ন',
+                  REJECTED: 'প্রত্যাখ্যাত'
+                };
+
+                const statusColorMap: Record<WarrantyClaim['status'], string> = {
+                  REQUESTED: 'bg-amber-500/15 text-amber-600',
+                  APPROVED: 'bg-blue-600 text-white animate-pulse',
+                  ACCEPTED: 'bg-indigo-600 text-white',
+                  ON_THE_WAY: 'bg-orange-600 text-white',
+                  RESOLVED: 'bg-emerald-600 text-white',
+                  REJECTED: 'bg-rose-600 text-white'
+                };
+
+                return (
+                  <div
+                    key={w.id}
+                    className={`p-5 sm:p-6 bg-white dark:bg-zinc-900 rounded-3xl shadow-sm space-y-5 border-2 ${
+                      w.status === 'APPROVED'
+                        ? 'border-blue-500/70'
+                        : w.status === 'RESOLVED'
+                        ? 'border-emerald-500/40'
+                        : 'border-orange-500/60'
+                    }`}
+                  >
+                    {/* Header with clear "ওয়ারেন্টি ক্লেইম" identity */}
+                    <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-[11px] font-black flex items-center gap-1">
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          <span>ওয়ারেন্টি ক্লেইম</span>
+                        </span>
+                        <span className="font-mono font-black text-xs text-orange-600">
+                          #{w.bookingNumber}
+                        </span>
+                        <h4 className="font-black text-base text-zinc-900 dark:text-white">
+                          {w.serviceName}
+                        </h4>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-[11px] font-black self-start sm:self-auto ${statusColorMap[w.status]}`}>
+                        {statusTextMap[w.status]}
+                      </span>
+                    </div>
+
+                    {/* 4-Step Warranty Stepper */}
+                    <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-[11px] font-bold">
+                        <div className={`p-2 rounded-xl border ${stepNumber >= 1 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-zinc-900 text-zinc-400'}`}>
+                          ১. অ্যাডমিন অনুমোদন
+                        </div>
+                        <div className={`p-2 rounded-xl border ${stepNumber >= 2 ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-zinc-900 text-zinc-400'}`}>
+                          ২. কাজ পিক (Picked)
+                        </div>
+                        <div className={`p-2 rounded-xl border ${stepNumber >= 3 ? 'bg-orange-600 text-white border-orange-600' : 'bg-white dark:bg-zinc-900 text-zinc-400'}`}>
+                          ৩. বাসায় রওনা (On Way)
+                        </div>
+                        <div className={`p-2 rounded-xl border ${stepNumber >= 4 ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-zinc-900 text-zinc-400'}`}>
+                          ৪. সার্ভিস সম্পন্ন
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Customer & Problem Info */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                      <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 space-y-1.5">
+                        <div className="text-[11px] font-bold text-zinc-400 uppercase">গ্রাহকের তথ্য ও লোকেশন</div>
+                        <div className="font-black text-zinc-900 dark:text-white">
+                          {warrantyAsBooking.customerName}
+                        </div>
+                        <div className="text-zinc-600 dark:text-zinc-300 flex items-start gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-orange-500 shrink-0 mt-0.5" />
+                          <span>{warrantyAsBooking.customerAddress} ({warrantyAsBooking.customerArea})</span>
+                        </div>
+                        <a
+                          href={`tel:${warrantyAsBooking.customerPhone}`}
+                          className="inline-flex items-center gap-1 text-orange-600 font-bold hover:underline"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          <span>কল করুন: {warrantyAsBooking.customerPhone}</span>
+                        </a>
+                      </div>
+
+                      <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 space-y-2">
+                        <div>
+                          <div className="font-bold text-zinc-700 dark:text-zinc-300 mb-0.5">গ্রাহকের পুনরাবৃত্ত সমস্যা:</div>
+                          <p className="text-zinc-700 dark:text-zinc-200 italic">"{w.issueDescription}"</p>
+                        </div>
+                        {w.adminNote && (
+                          <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-700 dark:text-emerald-300 font-bold">
+                            🛡️ অ্যাডমিন নোট: {w.adminNote}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Technician Route Map for Warranty Visit */}
+                    {isMapExpanded && w.status !== 'RESOLVED' && (
+                      <div className="animate-in fade-in duration-200">
+                        <TechnicianRouteMap
+                          booking={warrantyAsBooking}
+                          technician={currentTech}
+                          height="320px"
+                          onExpandModal={() => setFullscreenRouteBooking(warrantyAsBooking)}
+                        />
+                      </div>
+                    )}
+
+                    {/* Optional Technician Resolution Note when ON_THE_WAY */}
+                    {w.status === 'ON_THE_WAY' && (
+                      <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 space-y-2 text-xs">
+                        <label className="font-bold text-emerald-800 dark:text-emerald-300 block">
+                          সমাধানের নোট (গ্রাহক ও অ্যাডমিন দেখতে পাবেন):
+                        </label>
+                        <input
+                          type="text"
+                          value={warrantyNotesInput[w.id] ?? ''}
+                          onChange={(e) => setWarrantyNotesInput(prev => ({ ...prev, [w.id]: e.target.value }))}
+                          placeholder="যেমন: পাইপের জয়েন্ট নতুন করে সিল করে দেওয়া হয়েছে এবং সম্পূর্ণ লিকেজমুক্ত।"
+                          className="w-full px-3 py-2 rounded-xl border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-zinc-900"
+                        />
+                      </div>
+                    )}
+
+                    {w.status === 'RESOLVED' && w.technicianNote && (
+                      <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-700 dark:text-emerald-300 font-bold">
+                        ✔️ সম্পন্ন নোট ({w.resolvedDate}): {w.technicianNote}
+                      </div>
+                    )}
+
+                    {/* Action Bar */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {w.status !== 'RESOLVED' && (
+                          <button
+                            type="button"
+                            onClick={() => setExpandedRouteMapIds(prev => ({ ...prev, [w.id]: !isMapExpanded }))}
+                            className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer border transition-colors ${
+                              isMapExpanded
+                                ? 'bg-amber-500 text-white border-amber-500'
+                                : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-500/40'
+                            }`}
+                          >
+                            <Navigation className="w-3.5 h-3.5" />
+                            <span>{isMapExpanded ? 'রুট ম্যাপ লুকান' : 'গ্রাহকের লোকেশন ও রুট দেখুন'}</span>
+                          </button>
+                        )}
+
+                        {relatedBooking && (
+                          <button
+                            type="button"
+                            onClick={() => setChatBookingModal(relatedBooking)}
+                            className="px-3.5 py-2 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-orange-500/30 font-bold text-xs flex items-center gap-1.5 cursor-pointer hover:bg-orange-100"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span>{isBangla ? 'গ্রাহককে মেসেজ দিন' : 'Message Customer'}</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 ml-auto">
+                        {w.status === 'APPROVED' && (
+                          <button
+                            type="button"
+                            onClick={() => handleWarrantyAction(w, 'ACCEPTED')}
+                            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs shadow-md cursor-pointer flex items-center gap-1.5"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>{isBangla ? '✅ ওয়ারেন্টি কাজ পিক করুন (Pick Warranty Job)' : 'Pick Warranty Job'}</span>
+                          </button>
+                        )}
+
+                        {w.status === 'ACCEPTED' && (
+                          <button
+                            type="button"
+                            onClick={() => handleWarrantyAction(w, 'ON_THE_WAY')}
+                            className="px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs shadow-md cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Truck className="w-4 h-4" />
+                            <span>{isBangla ? '🚚 গ্রাহকের বাসায় রওনা হোন (Start Journey)' : 'Start Warranty Journey'}</span>
+                          </button>
+                        )}
+
+                        {w.status === 'ON_THE_WAY' && (
+                          <button
+                            type="button"
+                            onClick={() => handleWarrantyAction(w, 'RESOLVED')}
+                            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Check className="w-4 h-4" />
+                            <span>{isBangla ? '✔️ ওয়ারেন্টি সার্ভিস সম্পন্ন করুন' : 'Mark Warranty Resolved'}</span>
                           </button>
                         )}
                       </div>
@@ -874,6 +1408,83 @@ export const TechnicianDashboard: React.FC = () => {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB: CUSTOMER REVIEWS & FEEDBACK RECEIVED */}
+      {activeTab === 'reviews' && (
+        <div className="space-y-4">
+          <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+            <div>
+              <h3 className="text-base font-black text-zinc-900 dark:text-white flex items-center gap-2">
+                <Star className="w-5 h-5 text-amber-500 fill-current" />
+                <span>{isBangla ? 'গ্রাহকদের দেওয়া রিভিউ ও ফিডব্যাক' : 'Customer Reviews & Ratings'}</span>
+              </h3>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                {isBangla ? 'আপনার সম্পন্ন হওয়া কাজের ওপর গ্রাহকদের সরাসরি মূল্যায়ন ও মতামত।' : 'Verified customer ratings and feedback for your completed work.'}
+              </p>
+            </div>
+            <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30">
+              <div className="text-2xl font-black text-amber-500">★ {currentTech.rating}</div>
+              <div className="text-[11px] text-zinc-600 dark:text-zinc-300">
+                <div className="font-bold">গড় রেটিং</div>
+                <div>{currentTech.reviewCount}টি মোট রিভিউ</div>
+              </div>
+            </div>
+          </div>
+
+          {techReviews.length === 0 ? (
+            <div className="p-12 text-center bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 space-y-2">
+              <Star className="w-10 h-10 text-zinc-400 mx-auto" />
+              <h4 className="font-bold text-sm text-zinc-900 dark:text-white">
+                {isBangla ? 'এখনও কোনো নতুন গ্রাহক ফিডব্যাক জমা পড়েনি' : 'No written reviews yet'}
+              </h4>
+              <p className="text-xs text-zinc-500">
+                {isBangla ? 'গ্রাহকরা কাজ শেষে বা ওয়ারেন্টি সমাধানের পর ফিডব্যাক দিলে এখানে প্রদর্শিত হবে।' : 'Customer feedback will appear here once submitted.'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {techReviews.map((rev) => (
+                <div key={rev.id} className="p-5 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <img src={rev.customerAvatar} alt={rev.customerName} className="w-10 h-10 rounded-full object-cover border border-orange-500/30" />
+                      <div>
+                        <div className="font-black text-xs text-zinc-900 dark:text-white">{rev.customerName}</div>
+                        <div className="text-[11px] text-zinc-400">{rev.serviceName} · {rev.createdAt}</div>
+                      </div>
+                    </div>
+                    <div className="px-2.5 py-1 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 font-black text-xs flex items-center gap-1">
+                      <Star className="w-3.5 h-3.5 fill-current" />
+                      <span>{rev.overallRating}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-zinc-700 dark:text-zinc-300 bg-stone-50 dark:bg-zinc-800/70 p-3 rounded-2xl italic border border-zinc-200 dark:border-zinc-700/60">
+                    "{rev.comment}"
+                  </p>
+
+                  {rev.feedbackTags && rev.feedbackTags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {rev.feedbackTags.map((tag, idx) => (
+                        <span key={idx} className="px-2 py-0.5 rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400 text-[10px] font-bold">
+                          ✓ {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-4 gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800 text-center text-[10px] text-zinc-500">
+                    <div>মান: <span className="font-black text-zinc-800 dark:text-zinc-200">{rev.workQuality}★</span></div>
+                    <div>আচরণ: <span className="font-black text-zinc-800 dark:text-zinc-200">{rev.behavior}★</span></div>
+                    <div>সময়: <span className="font-black text-zinc-800 dark:text-zinc-200">{rev.punctuality}★</span></div>
+                    <div>মূল্য: <span className="font-black text-zinc-800 dark:text-zinc-200">{rev.priceFairness}★</span></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -1497,6 +2108,20 @@ export const TechnicianDashboard: React.FC = () => {
           isOpen={!!chatBookingModal}
           onClose={() => setChatBookingModal(null)}
         />
+      )}
+
+      {/* Fullscreen Technician Route Navigation Modal */}
+      {fullscreenRouteBooking && (
+        <div className="fixed inset-0 z-[3200] bg-black/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4">
+          <div className="w-full max-w-5xl max-h-[95vh] overflow-y-auto rounded-3xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <TechnicianRouteMap
+              booking={fullscreenRouteBooking}
+              technician={currentTech}
+              height="55vh"
+              onCloseModal={() => setFullscreenRouteBooking(null)}
+            />
+          </div>
+        </div>
       )}
 
     </div>

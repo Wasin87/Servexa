@@ -55,13 +55,13 @@ export const AdminDashboard: React.FC = () => {
   const [resolutionInput, setResolutionInput] = useState('');
 
   // Warranty Admin Note State
-  const [activeWarrantyId, setActiveWarrantyId] = useState<string | null>(null);
-  const [warrantyAdminNote, setWarrantyAdminNote] = useState('অনুমোদিত - টেকনিশিয়ানকে ফ্রি রি-ডিসপ্যাচ নির্দেশ দেওয়া হয়েছে।');
+  const [warrantyNotes, setWarrantyNotes] = useState<Record<string, string>>({});
 
   // Stats
   const totalBookings = bookings.length + 120;
   const totalVerifiedTechs = technicians.filter(t => t.platformVerified).length;
   const openDisputes = reports.filter(r => r.status === 'OPEN').length;
+  const pendingWarrantiesCount = warranties.filter(w => w.status === 'REQUESTED').length;
   const platformRevenue = Math.round((bookings.reduce((sum, b) => sum + (b.finalTotal || b.estimatedTotalMax || 600), 0) + 95000) * 0.1);
 
   const filteredTechs = technicians.filter(t =>
@@ -82,14 +82,19 @@ export const AdminDashboard: React.FC = () => {
     setResolutionInput('');
   };
 
-  const handleApproveWarranty = (claimId: string) => {
-    updateWarrantyStatus(claimId, 'APPROVED', warrantyAdminNote);
-    setActiveWarrantyId(null);
+  const handleApproveWarranty = (claim: WarrantyClaim) => {
+    const note = (warrantyNotes[claim.id] || '').trim() || 'অনুমোদিত - টেকনিশিয়ানকে ফ্রি ওয়ারেন্টি সার্ভিসের জন্য পাঠানো হয়েছে।';
+    updateWarrantyStatus(claim.id, 'APPROVED', note);
+    const assignedTech = technicians.find(t => t.id === claim.technicianId)?.name || claim.technicianName || 'টেকনিশিয়ান';
+    setDeleteToast(`ওয়ারেন্টি ক্লেইম #${claim.bookingNumber} অনুমোদন করে ${assignedTech}-এর ড্যাশবোর্ডে পাঠানো হয়েছে!`);
+    setTimeout(() => setDeleteToast(null), 4000);
   };
 
-  const handleRejectWarranty = (claimId: string) => {
-    updateWarrantyStatus(claimId, 'REJECTED', 'অভিযোগ পর্যালোচনা শেষে ওয়ারেন্টি শর্তের আওতাধীন পাওয়া যায়নি।');
-    setActiveWarrantyId(null);
+  const handleRejectWarranty = (claim: WarrantyClaim) => {
+    const note = (warrantyNotes[claim.id] || '').trim() || 'অভিযোগ পর্যালোচনা শেষে ওয়ারেন্টি শর্তের আওতাধীন পাওয়া যায়নি।';
+    updateWarrantyStatus(claim.id, 'REJECTED', note);
+    setDeleteToast(`ওয়ারেন্টি ক্লেইম #${claim.bookingNumber} প্রত্যাখ্যান করা হয়েছে।`);
+    setTimeout(() => setDeleteToast(null), 3500);
   };
 
   return (
@@ -197,6 +202,11 @@ export const AdminDashboard: React.FC = () => {
         >
           <ShieldCheck className="w-4 h-4" />
           <span>{isBangla ? 'ওয়ারেন্টি ক্লেইম অনুমোদন' : 'Warranty Approvals'} ({warranties.length})</span>
+          {pendingWarrantiesCount > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-black animate-pulse">
+              {pendingWarrantiesCount}
+            </span>
+          )}
         </button>
 
         <button
@@ -483,61 +493,150 @@ export const AdminDashboard: React.FC = () => {
       {/* TAB 4: WARRANTY CLAIMS APPROVAL */}
       {activeTab === 'warranties' && (
         <div className="space-y-4">
-          <div>
-            <h3 className="text-base font-black text-zinc-900 dark:text-white">
-              {isBangla ? '৭-দিনের ফ্রি সার্ভিসিং ওয়ারেন্টি ক্লেইম অনুমোদন' : 'Warranty Claims Approval Hub'}
-            </h3>
-            <p className="text-xs text-zinc-500">
-              {isBangla ? 'গ্রাহকদের ওয়ারেন্টি ক্লেইম রিভিউ করে ফ্রি রি-ডিসপ্যাচ অনুমোদন করুন।' : 'Review 7-day re-service claims and approve warranty coverage.'}
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-base font-black text-zinc-900 dark:text-white">
+                {isBangla ? '৭-দিনের ফ্রি সার্ভিসিং ওয়ারেন্টি ক্লেইম অনুমোদন ও ডিসপ্যাচ' : 'Warranty Claims Approval & Technician Dispatch'}
+              </h3>
+              <p className="text-xs text-zinc-500">
+                {isBangla
+                  ? 'অ্যাপ্রুভ করলে ক্লেইমটি সরাসরি মূল টেকনিশিয়ানের ড্যাশবোর্ডে "ওয়ারেন্টি ক্লেইম" হিসেবে চলে যাবে।'
+                  : 'Approving a claim routes it directly to the original technician for free warranty service.'}
+              </p>
+            </div>
+            {pendingWarrantiesCount > 0 && (
+              <span className="px-3 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-black self-start">
+                ⏳ {pendingWarrantiesCount} টি ক্লেইম অনুমোদনের অপেক্ষায়
+              </span>
+            )}
           </div>
 
-          <div className="space-y-3">
-            {warranties.map((w) => (
-              <div key={w.id} className="p-5 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-orange-600">Claim #{w.id}</span>
-                    <span className="text-xs text-zinc-500">বুকিং নং: #{w.bookingNumber}</span>
-                  </div>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                    w.status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-600' : 'bg-amber-500/15 text-amber-600'
-                  }`}>
-                    {w.status}
-                  </span>
-                </div>
+          {warranties.length === 0 ? (
+            <div className="p-12 text-center bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 space-y-2">
+              <ShieldCheck className="w-10 h-10 text-zinc-400 mx-auto" />
+              <h4 className="font-bold text-sm text-zinc-900 dark:text-white">
+                {isBangla ? 'কোনো ওয়ারেন্টি ক্লেইম জমা পড়েনি' : 'No warranty claims submitted yet'}
+              </h4>
+              <p className="text-xs text-zinc-500">
+                {isBangla ? 'গ্রাহকরা কোনো সম্পন্ন কাজের ওপর ওয়ারেন্টি ক্লেইম করলে এখানে অনুমোদনের জন্য প্রদর্শিত হবে।' : 'Customer warranty claims will appear here for review.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {warranties.map((w) => {
+                const relatedBooking = bookings.find(b => b.id === w.bookingId);
+                const relatedTech = technicians.find(t => t.id === w.technicianId);
+                const customerName = w.customerName || relatedBooking?.customerName || 'গ্রাহক';
+                const customerPhone = w.customerPhone || relatedBooking?.customerPhone || '';
+                const customerAddress = w.customerAddress || relatedBooking?.customerAddress || w.customerArea || relatedBooking?.customerArea || '';
+                const techName = w.technicianName || relatedBooking?.technicianName || relatedTech?.name || 'টেকনিশিয়ান';
+                const techPhone = w.technicianPhone || relatedBooking?.technicianPhone || relatedTech?.phone || '';
 
-                <div className="text-xs space-y-1">
-                  <div>সার্ভিস: <span className="font-bold text-zinc-900 dark:text-white">{w.serviceName}</span></div>
-                  <div>অনুরোধের তারিখ: {w.requestDate}</div>
-                  <p className="p-3 rounded-2xl bg-stone-50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 italic border border-zinc-200 dark:border-zinc-700">
-                    "{w.issueDescription}"
-                  </p>
-                </div>
+                const statusBadgeLabel: Record<WarrantyClaim['status'], string> = {
+                  REQUESTED: 'অনুমোদনের অপেক্ষায় (Pending)',
+                  APPROVED: 'অনুমোদিত · টেকনিশিয়ানের কাছে পাঠানো হয়েছে',
+                  ACCEPTED: 'টেকনিশিয়ান পিক করেছেন',
+                  ON_THE_WAY: 'টেকনিশিয়ান পথে আছেন',
+                  RESOLVED: 'সার্ভিস সম্পন্ন (Resolved)',
+                  REJECTED: 'প্রত্যাখ্যাত'
+                };
 
-                {w.status === 'REQUESTED' ? (
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                    <button
-                      onClick={() => handleRejectWarranty(w.id)}
-                      className="px-4 py-2 rounded-xl border border-zinc-300 text-xs font-bold text-rose-600 hover:bg-rose-50 cursor-pointer"
-                    >
-                      {isBangla ? 'প্রত্যাখ্যান' : 'Reject'}
-                    </button>
-                    <button
-                      onClick={() => handleApproveWarranty(w.id)}
-                      className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-xs cursor-pointer"
-                    >
-                      {isBangla ? 'ফ্রি রি-ডিসপ্যাচ অনুমোদন' : 'Approve Free Re-dispatch'}
-                    </button>
+                const statusBadgeStyle: Record<WarrantyClaim['status'], string> = {
+                  REQUESTED: 'bg-amber-500/15 text-amber-600 border border-amber-500/30 animate-pulse',
+                  APPROVED: 'bg-blue-500/15 text-blue-600 border border-blue-500/30',
+                  ACCEPTED: 'bg-indigo-500/15 text-indigo-600 border border-indigo-500/30',
+                  ON_THE_WAY: 'bg-orange-500/15 text-orange-600 border border-orange-500/30',
+                  RESOLVED: 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30',
+                  REJECTED: 'bg-rose-500/15 text-rose-600 border border-rose-500/30'
+                };
+
+                return (
+                  <div key={w.id} className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xs space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="px-2.5 py-1 rounded-lg bg-orange-500/10 text-orange-600 font-mono text-xs font-black">
+                          Claim #{w.id}
+                        </span>
+                        <span className="text-xs text-zinc-500 font-mono font-bold">
+                          বুকিং নং: #{w.bookingNumber}
+                        </span>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-[11px] font-black self-start sm:self-auto ${statusBadgeStyle[w.status]}`}>
+                        {statusBadgeLabel[w.status]}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                      <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/60 space-y-1">
+                        <div className="text-[11px] font-bold text-zinc-400 uppercase">গ্রাহকের তথ্য</div>
+                        <div className="font-black text-zinc-900 dark:text-white">{customerName}</div>
+                        {customerPhone && <div className="text-zinc-600 dark:text-zinc-300">📞 {customerPhone}</div>}
+                        {customerAddress && <div className="text-zinc-500">📍 {customerAddress}</div>}
+                      </div>
+
+                      <div className="p-3.5 rounded-2xl bg-orange-50/70 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-900/40 space-y-1">
+                        <div className="text-[11px] font-bold text-orange-600 dark:text-orange-400 uppercase flex items-center gap-1">
+                          <Wrench className="w-3.5 h-3.5" />
+                          <span>নির্ধারিত টেকনিশিয়ান (যার কাছে কাজ যাবে)</span>
+                        </div>
+                        <div className="font-black text-zinc-900 dark:text-white">{techName}</div>
+                        {techPhone && <div className="text-zinc-600 dark:text-zinc-300">📞 {techPhone}</div>}
+                        <div className="text-[11px] text-zinc-500">সার্ভিস: <span className="font-bold text-zinc-800 dark:text-zinc-200">{w.serviceName}</span> · তারিখ: {w.requestDate}</div>
+                      </div>
+                    </div>
+
+                    <p className="p-3.5 rounded-2xl bg-stone-50 dark:bg-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 italic border border-zinc-200 dark:border-zinc-700">
+                      সমস্যার বিবরণ: "{w.issueDescription}"
+                    </p>
+
+                    {w.status === 'REQUESTED' ? (
+                      <div className="space-y-3 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                        <div>
+                          <label className="block text-[11px] font-bold text-zinc-600 dark:text-zinc-400 mb-1">
+                            অ্যাডমিন অনুমোদন নোট / টেকনিশিয়ানের জন্য নির্দেশনা:
+                          </label>
+                          <input
+                            type="text"
+                            value={warrantyNotes[w.id] ?? 'অনুমোদিত - টেকনিশিয়ানকে ফ্রি ওয়ারেন্টি সার্ভিসের জন্য পাঠানো হয়েছে।'}
+                            onChange={(e) => setWarrantyNotes(prev => ({ ...prev, [w.id]: e.target.value }))}
+                            className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800"
+                          />
+                        </div>
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleRejectWarranty(w)}
+                            className="px-4 py-2 rounded-xl border border-zinc-300 dark:border-zinc-700 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
+                          >
+                            {isBangla ? 'প্রত্যাখ্যান' : 'Reject'}
+                          </button>
+                          <button
+                            onClick={() => handleApproveWarranty(w)}
+                            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-md shadow-emerald-600/20 cursor-pointer flex items-center gap-1.5"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>{isBangla ? `অ্যাপ্রুভ ও ${techName}-কে পাঠান` : 'Approve & Dispatch to Technician'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5 pt-2 border-t border-zinc-100 dark:border-zinc-800 text-xs">
+                        {w.adminNote && (
+                          <div className="text-emerald-600 dark:text-emerald-400 font-bold">
+                            ✅ অ্যাডমিন নোট: {w.adminNote}
+                          </div>
+                        )}
+                        {w.technicianNote && (
+                          <div className="text-blue-600 dark:text-blue-400 font-bold">
+                            🔧 টেকনিশিয়ান আপডেট: {w.technicianNote}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="text-[11px] text-emerald-600 font-bold">
-                    স্ট্যাটাস: {w.adminNote || 'অনুমোদিত'}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

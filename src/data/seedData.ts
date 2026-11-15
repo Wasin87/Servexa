@@ -1466,6 +1466,76 @@ export const initialBookings: Booking[] = [
     reviewed: true,
     createdAt: '2026-09-20T08:00:00Z',
     updatedAt: '2026-09-20T12:35:00Z'
+  },
+  {
+    id: 'book-3',
+    bookingNumber: 'KGO-2026-000105',
+    customerId: 'user-cust-demo',
+    customerName: 'সাকিব আল হাসান (Sakib Al Hasan)',
+    customerPhone: '01711-001122',
+    customerCity: 'Dhaka',
+    customerArea: 'Dhanmondi',
+    customerAddress: 'House 42, Road 9/A, Dhanmondi R/A, Dhaka',
+    technicianId: 'tech-1',
+    technicianName: 'রহিম আহমেদ (Rahim Ahmed)',
+    technicianPhone: '01712-345678',
+    technicianAvatar: 'https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=400&auto=format&fit=crop&q=80',
+    categoryId: 'ac_repair',
+    serviceNameEn: 'Split AC Gas Refill & Cooling Check',
+    serviceNameBn: 'স্প্লিট এসি গ্যাস রিফিল ও কুলিং সার্ভিসিং',
+    problemDescription: 'বেডরুমের ১.৫ টন এসি কম ঠান্ডা হচ্ছে এবং ইনডোর ইউনিট থেকে হালকা পানি চুইয়ে পড়ছে।',
+    mediaUrls: [],
+    date: '2026-09-25',
+    timeSlot: '04:00 PM - 06:00 PM',
+    urgency: 'normal',
+    estimatedVisitingFee: 200,
+    estimatedLabourMin: 600,
+    estimatedLabourMax: 1200,
+    estimatedTotalMin: 800,
+    estimatedTotalMax: 1400,
+    finalTotal: 1100,
+    status: 'COMPLETED',
+    statusHistory: [
+      {
+        status: 'REQUESTED',
+        timestamp: '2026-09-25T10:00:00Z',
+        noteEn: 'Customer booked Split AC cooling check.',
+        noteBn: 'গ্রাহক স্প্লিট এসি সার্ভিসিং বুক করেছেন।'
+      },
+      {
+        status: 'COMPLETED',
+        timestamp: '2026-09-25T17:15:00Z',
+        noteEn: 'AC drain line cleared and cooling restored.',
+        noteBn: 'ড্রেন লাইন পরিষ্কার ও গ্যাস প্রেসার সমন্বয় সম্পন্ন হয়েছে।'
+      }
+    ],
+    invoice: {
+      id: 'inv-102',
+      invoiceNumber: 'INV-2026-000102',
+      bookingId: 'book-3',
+      bookingNumber: 'KGO-2026-000105',
+      customerName: 'সাকিব আল হাসান',
+      customerPhone: '01711-001122',
+      technicianName: 'রহিম আহমেদ',
+      technicianPhone: '01712-345678',
+      serviceName: 'স্প্লিট এসি গ্যাস রিফিল ও কুলিং সার্ভিসিং',
+      issueDate: '2026-09-25',
+      visitingFee: 200,
+      labourCost: 700,
+      partsCost: 200,
+      discount: 0,
+      subtotal: 1100,
+      total: 1100,
+      paymentMethod: 'bkash',
+      paymentStatus: 'PAID',
+      paidAt: '2026-09-25T17:20:00Z'
+    },
+    paymentStatus: 'PAID',
+    paymentMethod: 'bkash',
+    warrantyDays: 14,
+    reviewed: false,
+    createdAt: '2026-09-25T10:00:00Z',
+    updatedAt: '2026-09-25T17:20:00Z'
   }
 ];
 

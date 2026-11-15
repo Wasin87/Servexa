@@ -37,6 +37,18 @@ export const CustomerReviews: React.FC = () => {
     }
   ];
 
+  const liveReviews = reviews.slice(0, 3).map((r) => ({
+    id: r.id,
+    name: r.customerName,
+    area: 'ঢাকা · ভেরিফায়েড বুকিং',
+    rating: r.overallRating,
+    service: r.serviceName,
+    text: r.comment,
+    date: r.createdAt
+  }));
+
+  const combinedReviews = [...liveReviews, ...demoTestimonials].slice(0, 3);
+
   return (
     <section className="py-16 sm:py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto text-center space-y-2 mb-12">
@@ -52,7 +64,7 @@ export const CustomerReviews: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {demoTestimonials.map((t) => (
+        {combinedReviews.map((t) => (
           <div
             key={t.id}
             className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between"

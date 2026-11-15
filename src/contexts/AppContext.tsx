@@ -21,6 +21,7 @@ import {
   initialNotifications,
 } from '../data/seedData';
 import { useAuth } from './AuthContext';
+import { resolveCustomerCoordinates } from '../utils/geoUtils';
 
 interface AppContextType {
   categories: ServiceCategory[];
@@ -51,7 +52,7 @@ interface AppContextType {
   markNotificationRead: (notificationId: string) => void;
   markAllNotificationsRead: () => void;
   submitWarrantyClaim: (claim: Omit<WarrantyClaim, 'id' | 'requestDate' | 'status'>) => void;
-  updateWarrantyStatus: (claimId: string, status: WarrantyClaim['status'], adminNote?: string) => void;
+  updateWarrantyStatus: (claimId: string, status: WarrantyClaim['status'], note?: string) => void;
   submitReport: (report: Omit<ReportItem, 'id' | 'createdAt' | 'status'>) => void;
   resolveReport: (reportId: string, resolution: string) => void;
   addMaintenanceReminder: (reminder: Omit<MaintenanceReminder, 'id' | 'active'>) => void;
@@ -238,6 +239,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const createBooking = (input: Partial<Booking>): Booking => {
     const bookingNumber = `KGO-2026-${String(Math.floor(100000 + Math.random() * 900000)).slice(0, 6)}`;
+    const areaVal = input.customerArea || currentUser?.area || 'Mirpur';
+    const addressVal = input.customerAddress || currentUser?.address || 'House 1, Road 2';
+    const resolvedCoords = resolveCustomerCoordinates(areaVal, addressVal, bookingNumber);
     const newBooking: Booking = {
       id: `book-${Date.now()}`,
       bookingNumber,
@@ -245,8 +249,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       customerName: currentUser?.name || input.customerName || 'Customer',
       customerPhone: currentUser?.phone || input.customerPhone || '01700-000000',
       customerCity: input.customerCity || currentUser?.city || 'Dhaka',
-      customerArea: input.customerArea || currentUser?.area || 'Mirpur',
-      customerAddress: input.customerAddress || currentUser?.address || 'House 1, Road 2',
+      customerArea: areaVal,
+      customerAddress: addressVal,
+      customerLat: input.customerLat ?? resolvedCoords.lat,
+      customerLng: input.customerLng ?? resolvedCoords.lng,
       technicianId: input.technicianId || 'tech-1',
       technicianName: input.technicianName || 'রহিম আহমেদ',
       technicianPhone: input.technicianPhone || '01712-345678',
@@ -430,6 +436,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
       })
     );
+
+    const reviewNotif: NotificationItem = {
+      id: `notif-rev-${Date.now()}`,
+      userId: reviewInput.technicianId,
+      role: 'TECHNICIAN',
+      titleEn: `New ${reviewInput.overallRating}★ Customer Feedback!`,
+      titleBn: `⭐ নতুন গ্রাহক ফিডব্যাক (${reviewInput.overallRating}★)!`,
+      messageEn: `${reviewInput.customerName} left feedback for ${reviewInput.serviceName}: "${reviewInput.comment.slice(0, 60)}"`,
+      messageBn: `${reviewInput.customerName} আপনার "${reviewInput.serviceName}" কাজের ওপর ${reviewInput.overallRating}★ ফিডব্যাক দিয়েছেন।`,
+      type: 'system',
+      link: '/technician/dashboard',
+      isRead: false,
+      createdAt: new Date().toISOString()
+    };
+    setNotifications(prev => [reviewNotif, ...prev]);
   };
 
   const toggleFavorite = (technicianId: string) => {
@@ -560,9 +581,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const submitWarrantyClaim = (claim: Omit<WarrantyClaim, 'id' | 'requestDate' | 'status'>) => {
+    const relatedBooking = bookings.find(b => b.id === claim.bookingId);
+    const targetTechId = claim.technicianId || relatedBooking?.technicianId || 'tech-1';
+    const relatedTech = technicians.find(t => t.id === targetTechId);
+
+    const areaVal = claim.customerArea || relatedBooking?.customerArea || currentUser?.area || 'Dhanmondi';
+    const addressVal = claim.customerAddress || relatedBooking?.customerAddress || currentUser?.address || 'Dhaka';
+    const resolvedCoords = resolveCustomerCoordinates(areaVal, addressVal, claim.bookingNumber);
+
     const newClaim: WarrantyClaim = {
       ...claim,
       id: `war-${Date.now()}`,
+      technicianId: targetTechId,
+      technicianName: claim.technicianName || relatedBooking?.technicianName || relatedTech?.name || 'টেকনিশিয়ান',
+      technicianPhone: claim.technicianPhone || relatedBooking?.technicianPhone || relatedTech?.phone || '',
+      customerName: claim.customerName || relatedBooking?.customerName || currentUser?.name || 'গ্রাহক',
+      customerPhone: claim.customerPhone || relatedBooking?.customerPhone || currentUser?.phone || '',
+      customerArea: areaVal,
+      customerAddress: addressVal,
+      customerLat: claim.customerLat ?? relatedBooking?.customerLat ?? resolvedCoords.lat,
+      customerLng: claim.customerLng ?? relatedBooking?.customerLng ?? resolvedCoords.lng,
       requestDate: new Date().toISOString().split('T')[0],
       status: 'REQUESTED'
     };
@@ -571,21 +609,152 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setBookings(prev =>
       prev.map(b => (b.id === claim.bookingId ? { ...b, warrantyRequested: true } : b))
     );
+
+    const adminNotif: NotificationItem = {
+      id: `notif-war-admin-${Date.now()}`,
+      userId: 'user-admin-demo',
+      role: 'ADMIN',
+      titleEn: `New Warranty Claim #${newClaim.bookingNumber}`,
+      titleBn: `🛡️ নতুন ওয়ারেন্টি ক্লেইম আবেদন (#${newClaim.bookingNumber})`,
+      messageEn: `${newClaim.customerName} submitted a warranty claim for ${newClaim.serviceName} (Technician: ${newClaim.technicianName}).`,
+      messageBn: `${newClaim.customerName} (${newClaim.technicianName}-এর কাজের ওপর) ফ্রি ওয়ারেন্টি ক্লেইম করেছেন। অ্যাডমিন অনুমোদন প্রয়োজন।`,
+      type: 'warranty',
+      link: '/admin/dashboard',
+      isRead: false,
+      createdAt: new Date().toISOString()
+    };
+    setNotifications(prev => [adminNotif, ...prev]);
   };
 
-  const updateWarrantyStatus = (claimId: string, status: WarrantyClaim['status'], adminNote?: string) => {
+  const updateWarrantyStatus = (claimId: string, status: WarrantyClaim['status'], note?: string) => {
+    const targetClaim = warranties.find(w => w.id === claimId);
+    const today = new Date().toISOString().split('T')[0];
+
     setWarranties(prev =>
-      prev.map(w =>
-        w.id === claimId
-          ? {
-              ...w,
-              status,
-              adminNote,
-              resolvedDate: status === 'RESOLVED' ? new Date().toISOString().split('T')[0] : w.resolvedDate
-            }
-          : w
-      )
+      prev.map(w => {
+        if (w.id !== claimId) return w;
+        const isAdminAction = status === 'APPROVED' || status === 'REJECTED';
+        const isTechAction = status === 'ACCEPTED' || status === 'ON_THE_WAY' || status === 'RESOLVED';
+
+        return {
+          ...w,
+          status,
+          adminNote: isAdminAction ? (note || w.adminNote) : w.adminNote,
+          technicianNote: isTechAction ? (note || w.technicianNote) : w.technicianNote,
+          approvedDate: status === 'APPROVED' ? today : w.approvedDate,
+          acceptedAt: status === 'ACCEPTED' ? new Date().toISOString() : w.acceptedAt,
+          resolvedDate: status === 'RESOLVED' ? today : w.resolvedDate
+        };
+      })
     );
+
+    if (!targetClaim) return;
+
+    const newNotifications: NotificationItem[] = [];
+    const ts = Date.now();
+
+    if (status === 'APPROVED') {
+      newNotifications.push({
+        id: `notif-war-tech-${ts}`,
+        userId: targetClaim.technicianId,
+        role: 'TECHNICIAN',
+        titleEn: `Approved Warranty Job #${targetClaim.bookingNumber}`,
+        titleBn: `🛡️ অনুমোদিত ওয়ারেন্টি ক্লেইম (#${targetClaim.bookingNumber})`,
+        messageEn: `Admin approved warranty claim for ${targetClaim.serviceName} and assigned it to you. Pick this warranty job now.`,
+        messageBn: `অ্যাডমিন "${targetClaim.serviceName}"-এর ওয়ারেন্টি ক্লেইম অনুমোদন করে সরাসরি আপনার ড্যাশবোর্ডে পাঠিয়েছেন। অনুগ্রহ করে পিক করুন।`,
+        type: 'warranty',
+        link: '/technician/dashboard',
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+
+      newNotifications.push({
+        id: `notif-war-cust-${ts + 1}`,
+        userId: targetClaim.customerId,
+        role: 'CUSTOMER',
+        titleEn: `Warranty Claim Approved`,
+        titleBn: `✅ আপনার ওয়ারেন্টি ক্লেইম অনুমোদিত হয়েছে`,
+        messageEn: `Admin approved claim #${targetClaim.bookingNumber} and dispatched it to ${targetClaim.technicianName || 'your technician'}.`,
+        messageBn: `অ্যাডমিন আপনার ওয়ারেন্টি ক্লেইম (#${targetClaim.bookingNumber}) অনুমোদন করে টেকনিশিয়ান ${targetClaim.technicianName || ''}-এর কাছে পাঠিয়েছেন।`,
+        type: 'warranty',
+        link: '/customer/dashboard',
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+    } else if (status === 'REJECTED') {
+      newNotifications.push({
+        id: `notif-war-rej-${ts}`,
+        userId: targetClaim.customerId,
+        role: 'CUSTOMER',
+        titleEn: `Warranty Claim Update`,
+        titleBn: `ওয়ারেন্টি ক্লেইম পর্যালোচনা সম্পন্ন`,
+        messageEn: note || `Warranty claim #${targetClaim.bookingNumber} was not eligible.`,
+        messageBn: note || `ওয়ারেন্টি ক্লেইম (#${targetClaim.bookingNumber}) অনুমোদিত হয়নি।`,
+        type: 'warranty',
+        link: '/customer/dashboard',
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+    } else if (status === 'ACCEPTED') {
+      newNotifications.push({
+        id: `notif-war-acc-${ts}`,
+        userId: targetClaim.customerId,
+        role: 'CUSTOMER',
+        titleEn: `Technician Picked Warranty Claim`,
+        titleBn: `🔧 টেকনিশিয়ান ওয়ারেন্টি কাজ পিক করেছেন`,
+        messageEn: `${targetClaim.technicianName || 'Technician'} accepted your warranty service for #${targetClaim.bookingNumber}.`,
+        messageBn: `${targetClaim.technicianName || 'টেকনিশিয়ান'} আপনার ফ্রি ওয়ারেন্টি কাজ (#${targetClaim.bookingNumber}) পিক করেছেন।`,
+        type: 'warranty',
+        link: '/customer/dashboard',
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+    } else if (status === 'ON_THE_WAY') {
+      newNotifications.push({
+        id: `notif-war-way-${ts}`,
+        userId: targetClaim.customerId,
+        role: 'CUSTOMER',
+        titleEn: `Technician On The Way (Warranty)`,
+        titleBn: `🚚 ওয়ারেন্টি সার্ভিসের জন্য টেকনিশিয়ান রওনা হয়েছেন`,
+        messageEn: `${targetClaim.technicianName || 'Technician'} is heading to ${targetClaim.customerAddress || 'your location'} for free warranty service.`,
+        messageBn: `${targetClaim.technicianName || 'টেকনিশিয়ান'} ফ্রি ওয়ারেন্টি সার্ভিস দিতে আপনার ঠিকানায় রওনা হয়েছেন।`,
+        type: 'warranty',
+        link: '/customer/dashboard',
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+    } else if (status === 'RESOLVED') {
+      newNotifications.push({
+        id: `notif-war-res-c-${ts}`,
+        userId: targetClaim.customerId,
+        role: 'CUSTOMER',
+        titleEn: `Warranty Service Resolved!`,
+        titleBn: `✅ ওয়ারেন্টি সার্ভিস সম্পন্ন হয়েছে!`,
+        messageEn: `Warranty repair for ${targetClaim.serviceName} is completed. Please share your feedback.`,
+        messageBn: `"${targetClaim.serviceName}"-এর ফ্রি ওয়ারেন্টি সার্ভিস সম্পন্ন হয়েছে। অনুগ্রহ করে আপনার ফিডব্যাক জানান।`,
+        type: 'warranty',
+        link: '/customer/dashboard',
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+      newNotifications.push({
+        id: `notif-war-res-a-${ts + 1}`,
+        userId: 'user-admin-demo',
+        role: 'ADMIN',
+        titleEn: `Warranty Claim Resolved (#${targetClaim.bookingNumber})`,
+        titleBn: `✔️ ওয়ারেন্টি ক্লেইম সম্পন্ন (#${targetClaim.bookingNumber})`,
+        messageEn: `${targetClaim.technicianName || 'Technician'} completed warranty service for ${targetClaim.customerName || 'customer'}.`,
+        messageBn: `${targetClaim.technicianName || 'টেকনিশিয়ান'} সফলভাবে ওয়ারেন্টি সার্ভিস সম্পন্ন করেছেন।`,
+        type: 'warranty',
+        link: '/admin/dashboard',
+        isRead: false,
+        createdAt: new Date().toISOString()
+      });
+    }
+
+    if (newNotifications.length > 0) {
+      setNotifications(prev => [...newNotifications, ...prev]);
+    }
   };
 
   const submitReport = (report: Omit<ReportItem, 'id' | 'createdAt' | 'status'>) => {

@@ -11,12 +11,14 @@ import {
   DollarSign,
   Info,
   ArrowRight,
-  Upload
+  Upload,
+  Navigation
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { UrgencyLevel } from '../types';
+import { resolveCustomerCoordinates } from '../utils/geoUtils';
 
 export const BookPage: React.FC = () => {
   const { categories, technicians, createBooking } = useApp();
@@ -41,6 +43,8 @@ export const BookPage: React.FC = () => {
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [timeSlot, setTimeSlot] = useState<string>('02:00 PM - 04:00 PM');
   const [urgency, setUrgency] = useState<UrgencyLevel>(paramUrgent ? 'emergency' : 'today');
+  const [customerCoords, setCustomerCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [isDetectingCoords, setIsDetectingCoords] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const selectedCategory = categories.find((c) => c.id === selectedCategoryId) || categories[0];
@@ -62,9 +66,29 @@ export const BookPage: React.FC = () => {
     }
   };
 
+  const handleDetectCustomerGps = () => {
+    if (!navigator.geolocation) return;
+    setIsDetectingCoords(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCustomerCoords({
+          lat: Number(pos.coords.latitude.toFixed(6)),
+          lng: Number(pos.coords.longitude.toFixed(6))
+        });
+        setIsDetectingCoords(false);
+      },
+      () => {
+        setIsDetectingCoords(false);
+      },
+      { enableHighAccuracy: true, timeout: 7000 }
+    );
+  };
+
   const handleBookingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    const resolved = customerCoords || resolveCustomerCoordinates(customerArea, customerAddress);
 
     const booking = createBooking({
       categoryId: selectedCategory.id,
@@ -79,6 +103,8 @@ export const BookPage: React.FC = () => {
       customerCity,
       customerArea,
       customerAddress,
+      customerLat: resolved.lat,
+      customerLng: resolved.lng,
       date,
       timeSlot,
       urgency,
@@ -245,9 +271,26 @@ export const BookPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
-              {t.booking.addressLabel}
-            </label>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                {t.booking.addressLabel}
+              </label>
+              <button
+                type="button"
+                onClick={handleDetectCustomerGps}
+                disabled={isDetectingCoords}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-orange-600 dark:text-orange-400 text-[11px] font-bold transition-colors cursor-pointer"
+              >
+                <Navigation className={`w-3 h-3 ${isDetectingCoords ? 'animate-spin' : ''}`} />
+                <span>
+                  {isDetectingCoords
+                    ? (isBangla ? 'লোকেশন নেওয়া হচ্ছে...' : 'Detecting GPS...')
+                    : customerCoords
+                    ? (isBangla ? '✓ সঠিক GPS পিন যুক্ত হয়েছে' : '✓ Exact GPS Pin Attached')
+                    : (isBangla ? 'বর্তমান GPS লোকেশন যুক্ত করুন' : 'Attach Current GPS Pin')}
+                </span>
+              </button>
+            </div>
             <input
               type="text"
               required
