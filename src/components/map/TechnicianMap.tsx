@@ -782,7 +782,9 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
               <MapController center={mapCenter} zoom={zoomLevel} />
 
               {/* Heatmap density mode visualization */}
-              {mapMode === 'HEATMAP' && heatmapClusters.map((cluster, i) => {
+              {mapMode === 'HEATMAP' && heatmapClusters
+                .filter(cluster => cluster && !isNaN(cluster.lat) && !isNaN(cluster.lng))
+                .map((cluster, i) => {
                 const intensity = Math.min(cluster.count / 4, 1);
                 const color = intensity > 0.6 ? '#dc2626' : intensity > 0.3 ? '#ea580c' : '#f59e0b';
                 const isHovered = hoveredClusterIndex === i;
@@ -897,10 +899,11 @@ export const TechnicianMap: React.FC<TechnicianMapProps> = ({
               )}
 
               {/* Normal pros markers mode with interactive service circles and hover/click cards */}
-              {mapMode === 'PROS' && filteredTechnicians.map(tech => {
+              {mapMode === 'PROS' && filteredTechnicians
+                .filter(tech => tech && !isNaN(tech.latitude || DHAKA_CENTER.lat) && !isNaN(tech.longitude || DHAKA_CENTER.lng))
+                .map(tech => {
                 const lat = tech.latitude || DHAKA_CENTER.lat;
                 const lng = tech.longitude || DHAKA_CENTER.lng;
-                if (isNaN(lat) || isNaN(lng)) return null;
 
                 const isSelected = selectedTechId === tech.id;
                 const isHovered = hoveredTechId === tech.id;
