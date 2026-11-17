@@ -5,6 +5,8 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { WebSocketServer, WebSocket } from 'ws';
 import { GoogleGenAI, Modality, LiveServerMessage } from '@google/genai';
+import { getDb } from './server/db/database';
+import { createFinanceRouter } from './server/routes/financeRoutes';
 
 dotenv.config();
 
@@ -12,12 +14,26 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const isProduction = process.env.NODE_ENV === 'production';
-const PORT = Number(process.env.PORT) || 3000;
+const portArgIdx = process.argv.indexOf('--port');
+const cliPort = portArgIdx !== -1 ? Number(process.argv[portArgIdx + 1]) : NaN;
+const envPort = Number(process.env.PORT);
+const defaultAppPort = Number(process.env.DEFAULT_APP_PORT) || 3000;
+// In development, nginx typically owns NGINX_PORT (e.g. 8080) and proxies to DEFAULT_APP_PORT (3000).
+const PORT =
+  Number.isFinite(cliPort) && cliPort > 0
+    ? cliPort
+    : !isProduction && envPort && process.env.NGINX_PORT && envPort === Number(process.env.NGINX_PORT)
+    ? defaultAppPort
+    : envPort || defaultAppPort;
+
+// Initialize persistent SQLite database
+getDb();
 
 const app = express();
 const server = http.createServer(app);
 
 app.use(express.json({ limit: '10mb' }));
+app.use('/api', createFinanceRouter());
 
 // Shared server-side Gemini AI client initialization with User-Agent header for telemetry
 const getAIClient = (): GoogleGenAI | null => {
@@ -274,13 +290,19 @@ wss.on('connection', async (clientWs: WebSocket) => {
 });
 
 // Vite Middleware for Development / Static Hosting for Production
+let viteServer: Awaited<ReturnType<typeof import('vite')['createServer']>> | null = null;
 if (!isProduction) {
   const { createServer: createViteServer } = await import('vite');
-  const vite = await createViteServer({
-    server: { middlewareMode: true },
+  const disableHmr = process.env.DISABLE_HMR === 'true';
+  viteServer = await createViteServer({
+    server: {
+      middlewareMode: true,
+      hmr: disableHmr ? false : { server },
+      ...(disableHmr ? { ws: false } : {}),
+    },
     appType: 'spa',
   });
-  app.use(vite.middlewares);
+  app.use(viteServer.middlewares);
 } else {
   const distPath = path.resolve(__dirname, 'dist');
   app.use(express.static(distPath));
@@ -292,3 +314,20 @@ if (!isProduction) {
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server listening on port ${PORT} (isProduction: ${isProduction})`);
 });
+
+const shutdown = async () => {
+  try {
+    if (viteServer) {
+      await viteServer.close();
+    }
+  } catch {
+    // ignore
+  }
+  server.close(() => {
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(0), 2000).unref();
+};
+
+process.on('SIGTERM', () => void shutdown());
+process.on('SIGINT', () => void shutdown());

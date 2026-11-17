@@ -22,8 +22,8 @@ export async function diagnoseWithAI(
       body: JSON.stringify({ userInput, categories }),
     });
 
-    if (!res.ok) {
-      console.warn('Server Gemini diagnosis returned status:', res.status);
+    const contentType = res.headers.get('content-type') || '';
+    if (!res.ok || !contentType.includes('application/json')) {
       return fallback;
     }
 
@@ -65,8 +65,9 @@ export async function generateContentWithAI(
     body: JSON.stringify({ prompt, model: options?.model }),
   });
 
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
+  const contentType = res.headers.get('content-type') || '';
+  if (!res.ok || !contentType.includes('application/json')) {
+    const errData = contentType.includes('application/json') ? await res.json().catch(() => ({})) : {};
     throw new Error(errData.error || `Generate failed with status: ${res.status}`);
   }
 
@@ -88,7 +89,8 @@ export async function generateContentStreamWithAI(
     body: JSON.stringify({ prompt, model: options?.model }),
   });
 
-  if (!res.ok || !res.body) {
+  const contentType = res.headers.get('content-type') || '';
+  if (!res.ok || !res.body || contentType.includes('text/html')) {
     throw new Error(`Streaming failed with status: ${res.status}`);
   }
 

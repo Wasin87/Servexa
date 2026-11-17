@@ -3,24 +3,35 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Logo } from '../components/common/Logo';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { ShieldCheck, UserCheck, Wrench, Lock, ArrowRight } from 'lucide-react';
+import { Lock, ArrowRight, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { UserRole } from '../types';
 
 export const LoginPage: React.FC = () => {
   const { login, quickDemoLogin } = useAuth();
-  const { t, isBangla } = useLanguage();
+  const { isBangla } = useLanguage();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg(null);
     setIsSubmitting(true);
-    await login(email, password);
+    const res = await login(email, password);
     setIsSubmitting(false);
-    navigate('/');
+
+    if (!res.success || !res.user) {
+      setErrorMsg(res.error || (isBangla ? 'ইমেইল বা পাসওয়ার্ড সঠিক নয়।' : 'Invalid email or password.'));
+      return;
+    }
+
+    if (res.user.role === 'TECHNICIAN') navigate('/technician/dashboard');
+    else if (res.user.role === 'ADMIN') navigate('/admin/dashboard');
+    else navigate('/customer/dashboard');
   };
 
   const handleDemoClick = (role: UserRole) => {
@@ -54,70 +65,91 @@ export const LoginPage: React.FC = () => {
             <button
               type="button"
               onClick={() => handleDemoClick('CUSTOMER')}
-              className="py-2 px-2 rounded-xl bg-white dark:bg-zinc-800 border border-orange-200 dark:border-orange-800 hover:bg-orange-100 text-zinc-800 dark:text-zinc-200 font-semibold text-center transition-colors shadow-2xs"
+              className="py-2 px-2 rounded-xl bg-white dark:bg-zinc-800 border border-orange-200 dark:border-orange-800 hover:bg-orange-100 text-zinc-800 dark:text-zinc-200 font-semibold text-center transition-colors shadow-2xs cursor-pointer"
             >
-              👤 গ্রাহক
+              👤 {isBangla ? 'গ্রাহক' : 'Customer'}
             </button>
             <button
               type="button"
               onClick={() => handleDemoClick('TECHNICIAN')}
-              className="py-2 px-2 rounded-xl bg-white dark:bg-zinc-800 border border-orange-200 dark:border-orange-800 hover:bg-orange-100 text-zinc-800 dark:text-zinc-200 font-semibold text-center transition-colors shadow-2xs"
+              className="py-2 px-2 rounded-xl bg-white dark:bg-zinc-800 border border-orange-200 dark:border-orange-800 hover:bg-orange-100 text-zinc-800 dark:text-zinc-200 font-semibold text-center transition-colors shadow-2xs cursor-pointer"
             >
-              👷 মিস্ত্রি
+              👷 {isBangla ? 'মিস্ত্রি' : 'Technician'}
             </button>
             <button
               type="button"
               onClick={() => handleDemoClick('ADMIN')}
-              className="py-2 px-2 rounded-xl bg-white dark:bg-zinc-800 border border-orange-200 dark:border-orange-800 hover:bg-orange-100 text-zinc-800 dark:text-zinc-200 font-semibold text-center transition-colors shadow-2xs"
+              className="py-2 px-2 rounded-xl bg-white dark:bg-zinc-800 border border-orange-200 dark:border-orange-800 hover:bg-orange-100 text-zinc-800 dark:text-zinc-200 font-semibold text-center transition-colors shadow-2xs cursor-pointer"
             >
-              👨‍💼 অ্যাডমিন
+              👨‍💼 {isBangla ? 'অ্যাডমিন' : 'Admin'}
             </button>
           </div>
         </div>
 
+        {errorMsg && (
+          <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-bold flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
         <form onSubmit={handleFormSubmit} className="space-y-4 text-xs">
           <div>
             <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
-              ইমেইল বা ফোন নম্বর
+              {isBangla ? 'ইমেইল বা ফোন নম্বর' : 'Email or Phone'}
             </label>
             <input
               type="text"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="customer@servexa.demo"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+              placeholder="name@example.com"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
             />
           </div>
 
           <div>
             <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
-              পাসওয়ার্ড
+              {isBangla ? 'পাসওয়ার্ড' : 'Password'}
             </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(prev => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-3 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold shadow-md transition-all flex items-center justify-center gap-1.5"
+            className="w-full py-3 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            <span>{isSubmitting ? 'লগইন হচ্ছে...' : 'লগইন করুন'}</span>
+            <span>
+              {isSubmitting
+                ? (isBangla ? 'লগইন হচ্ছে...' : 'Signing in...')
+                : (isBangla ? 'লগইন করুন' : 'Sign In')}
+            </span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
 
         <div className="text-center text-xs text-zinc-500 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-          <span>নতুন গ্রাহক? </span>
+          <span>{isBangla ? 'নতুন গ্রাহক? ' : 'New to Servexa? '}</span>
           <Link to="/register" className="text-orange-600 dark:text-orange-400 font-bold hover:underline">
-            নতুন একাউন্ট খুলুন
+            {isBangla ? 'নতুন একাউন্ট খুলুন' : 'Create an Account'}
           </Link>
         </div>
       </div>

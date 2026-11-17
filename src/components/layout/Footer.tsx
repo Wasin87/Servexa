@@ -9,8 +9,8 @@ export const Footer: React.FC = () => {
 
   return (
     <footer className="border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 text-xs transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 sm:gap-8">
           {/* Brand Info */}
           <div className="lg:col-span-2 space-y-4">
             <Logo size="lg" showTagline={true} />
@@ -129,10 +129,10 @@ export const Footer: React.FC = () => {
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-              <span>১০০% বিশ্বস্ত ও ভেরিফায়েড</span>
+              <span>{isBangla ? '১০০% বিশ্বস্ত ও ভেরিফায়েড' : '100% Trusted & Verified'}</span>
             </span>
             <span>·</span>
-            <span>ঢাকা, চট্টগ্রাম ও সিলেট</span>
+            <span>{isBangla ? 'ঢাকা, চট্টগ্রাম ও সিলেট' : 'Dhaka, Chattogram & Sylhet'}</span>
           </div>
         </div>
       </div>

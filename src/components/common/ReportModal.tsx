@@ -12,7 +12,7 @@ interface ReportModalProps {
 }
 
 export const ReportModal: React.FC<ReportModalProps> = ({ booking, isOpen, onClose }) => {
-  const { t } = useLanguage();
+  const { t, isBangla } = useLanguage();
   const { submitReport } = useApp();
   const { currentUser } = useAuth();
 
@@ -35,7 +35,9 @@ export const ReportModal: React.FC<ReportModalProps> = ({ booking, isOpen, onClo
       targetName: booking.technicianName,
       targetRole: 'TECHNICIAN',
       reason,
-      description: description.trim() || 'গ্রাহক দ্বারা অভিযোগ দায়ের করা হয়েছে।'
+      description:
+        description.trim() ||
+        (isBangla ? 'গ্রাহক দ্বারা অভিযোগ দায়ের করা হয়েছে।' : 'Complaint filed by customer.')
     });
 
     onClose();
@@ -63,37 +65,39 @@ export const ReportModal: React.FC<ReportModalProps> = ({ booking, isOpen, onClo
         <form onSubmit={handleSubmit} className="mt-4 space-y-4 text-sm">
           <div>
             <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
-              অভিযোগের ধরণ (Reason)
+              {isBangla ? 'অভিযোগের ধরণ' : 'Reason for Report'}
             </label>
             <select
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
             >
-              <option value="Poor service quality">কাজের মান সন্তোষজনক নয় (Poor service quality)</option>
-              <option value="Overcharging / Wrong pricing">অতিরিক্ত মূল্য বা অযৌক্তিক বিল (Overcharging)</option>
-              <option value="No-show / Delay">মিস্ত্রি আসেননি বা চরম বিলম্ব (No-show / Delay)</option>
-              <option value="Inappropriate behavior">অপেশাদার বা অসদাচরণ (Inappropriate behavior)</option>
-              <option value="Damaged property">মালামালের ক্ষতিসাধন (Property damage)</option>
+              <option value="Poor service quality">{isBangla ? 'কাজের মান সন্তোষজনক নয়' : 'Poor service quality'}</option>
+              <option value="Overcharging / Wrong pricing">{isBangla ? 'অতিরিক্ত মূল্য বা অযৌক্তিক বিল' : 'Overcharging / Wrong pricing'}</option>
+              <option value="No-show / Delay">{isBangla ? 'মিস্ত্রি আসেননি বা চরম বিলম্ব' : 'No-show / Delay'}</option>
+              <option value="Inappropriate behavior">{isBangla ? 'অপেশাদার বা অসদাচরণ' : 'Inappropriate behavior'}</option>
+              <option value="Damaged property">{isBangla ? 'মালামালের ক্ষতিসাধন' : 'Damaged property'}</option>
             </select>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
-              ঘটনাটির বিস্তারিত বর্ণনা (Description)
+              {isBangla ? 'ঘটনাটির বিস্তারিত বর্ণনা' : 'Detailed Description'}
             </label>
             <textarea
               rows={4}
               required
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="কী সমস্যা হয়েছে বিস্তারিত লিখুন..."
+              placeholder={isBangla ? 'কী সমস্যা হয়েছে বিস্তারিত লিখুন...' : 'Describe what happened in detail...'}
               className="w-full px-3 py-2 text-sm rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
             />
           </div>
 
           <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-lg text-xs text-amber-800 dark:text-amber-300">
-            Servexa বিরোধ নিষ্পত্তি দল ২৪ ঘণ্টার মধ্যে উভয় পক্ষের সাথে যোগাযোগ করে ন্যায্য সমাধান করবে।
+            {isBangla
+              ? 'Servexa বিরোধ নিষ্পত্তি দল ২৪ ঘণ্টার মধ্যে উভয় পক্ষের সাথে যোগাযোগ করে ন্যায্য সমাধান করবে।'
+              : 'The Servexa dispute resolution team will contact both parties within 24 hours for a fair resolution.'}
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-200 dark:border-zinc-800">

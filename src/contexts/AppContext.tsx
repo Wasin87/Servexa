@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
+  User,
   Booking,
   BookingStatus,
   ChatMessage,
@@ -22,6 +23,7 @@ import {
 } from '../data/seedData';
 import { useAuth } from './AuthContext';
 import { resolveCustomerCoordinates } from '../utils/geoUtils';
+import { getStoredAuthToken, updateServerBookingStatus } from '../services/financeApi';
 
 interface AppContextType {
   categories: ServiceCategory[];
@@ -59,6 +61,7 @@ interface AppContextType {
   deleteMaintenanceReminder: (id: string) => void;
   updateTechnicianAvailability: (technicianId: string, availability: AvailabilityStatus) => void;
   verifyTechnicianField: (technicianId: string, field: 'phoneVerified' | 'nidVerified' | 'skillVerified' | 'platformVerified', value: boolean) => void;
+  registerNewTechnician: (user: User, preferredTechId?: string | null) => Technician;
   updateTechnicianProfile: (technicianId: string, profileData: Partial<Technician>) => void;
   deleteTechnician: (technicianId: string) => void;
   addTechnicianPortfolio: (technicianId: string, item: Omit<PortfolioItem, 'id'>) => void;
@@ -66,6 +69,21 @@ interface AppContextType {
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
+
+const toServexaId = (val?: string): string => {
+  if (!val) return '';
+  return val.replace(/KGO-/gi, 'SRV-').replace(/কেজিও-/g, 'এসআরভি-');
+};
+
+const toServexaWarrantyId = (id: string): string => {
+  if (!id) return `SRV-WRN-${String(Math.floor(100000 + Math.random() * 900000))}`;
+  if (id.startsWith('SRV-WRN-')) return id;
+  if (id.startsWith('war-')) {
+    const digits = id.replace(/\D/g, '').slice(-6).padStart(6, '0');
+    return `SRV-WRN-${digits}`;
+  }
+  return toServexaId(id);
+};
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser } = useAuth();
@@ -77,36 +95,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [technicians, setTechnicians] = useState<Technician[]>(() => {
+    const withDefaultGeo = initialTechnicians.map(initTech => ({
+      ...initTech,
+      division: initTech.division || 'Dhaka',
+      district: initTech.district || initTech.city || 'Dhaka'
+    }));
     const saved = localStorage.getItem('kormigo_technicians');
-    if (!saved) return initialTechnicians;
+    if (!saved) return withDefaultGeo;
     try {
       const parsed: Technician[] = JSON.parse(saved);
-      // Merge with initialTechnicians to ensure latitude/longitude/emergency fields are populated
-      return initialTechnicians.map(initTech => {
+      const seedIds = new Set(withDefaultGeo.map(t => t.id));
+      const customTechnicians = parsed.filter(p => !seedIds.has(p.id));
+      const mergedSeeds = withDefaultGeo.map(initTech => {
         const found = parsed.find(p => p.id === initTech.id);
         if (!found) return initTech;
         return {
           ...initTech,
           ...found,
-          latitude: initTech.latitude,
-          longitude: initTech.longitude,
-          emergencyAvailable: initTech.emergencyAvailable,
-          serviceRadiusKm: initTech.serviceRadiusKm
+          division: found.division || initTech.division,
+          district: found.district || initTech.district,
+          latitude: found.latitude ?? initTech.latitude,
+          longitude: found.longitude ?? initTech.longitude,
+          emergencyAvailable: found.emergencyAvailable ?? initTech.emergencyAvailable,
+          serviceRadiusKm: found.serviceRadiusKm ?? initTech.serviceRadiusKm
         };
       });
+      return [...customTechnicians, ...mergedSeeds];
     } catch {
-      return initialTechnicians;
+      return withDefaultGeo;
     }
   });
 
   const [bookings, setBookings] = useState<Booking[]>(() => {
     const saved = localStorage.getItem('kormigo_bookings');
-    return saved ? JSON.parse(saved) : initialBookings;
+    if (!saved) return initialBookings;
+    try {
+      const parsed: Booking[] = JSON.parse(saved);
+      return parsed.map(b => ({
+        ...b,
+        bookingNumber: toServexaId(b.bookingNumber),
+        invoice: b.invoice ? { ...b.invoice, bookingNumber: toServexaId(b.invoice.bookingNumber) } : undefined
+      }));
+    } catch {
+      return initialBookings;
+    }
   });
 
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
     const saved = localStorage.getItem('kormigo_notifications');
-    return saved ? JSON.parse(saved) : initialNotifications;
+    if (!saved) return initialNotifications;
+    try {
+      const parsed: NotificationItem[] = JSON.parse(saved);
+      return parsed.map(n => ({
+        ...n,
+        titleEn: toServexaId(n.titleEn),
+        titleBn: toServexaId(n.titleBn),
+        messageEn: toServexaId(n.messageEn),
+        messageBn: toServexaId(n.messageBn)
+      }));
+    } catch {
+      return initialNotifications;
+    }
   });
 
   const [favorites, setFavorites] = useState<string[]>(() => {
@@ -168,7 +217,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [warranties, setWarranties] = useState<WarrantyClaim[]>(() => {
     const saved = localStorage.getItem('kormigo_warranties');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    try {
+      const parsed: WarrantyClaim[] = JSON.parse(saved);
+      return parsed.map(w => ({
+        ...w,
+        id: toServexaWarrantyId(w.id),
+        bookingNumber: toServexaId(w.bookingNumber)
+      }));
+    } catch {
+      return [];
+    }
   });
 
   const [reports, setReports] = useState<ReportItem[]>(() => {
@@ -238,17 +297,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [maintenanceReminders]);
 
   const createBooking = (input: Partial<Booking>): Booking => {
-    const bookingNumber = `KGO-2026-${String(Math.floor(100000 + Math.random() * 900000)).slice(0, 6)}`;
+    const bookingNumber = input.bookingNumber || `SRV-2026-${String(Math.floor(100000 + Math.random() * 900000)).slice(0, 6)}`;
     const areaVal = input.customerArea || currentUser?.area || 'Mirpur';
+    const districtVal = input.customerDistrict || input.customerCity || currentUser?.district || currentUser?.city || 'Dhaka';
     const addressVal = input.customerAddress || currentUser?.address || 'House 1, Road 2';
-    const resolvedCoords = resolveCustomerCoordinates(areaVal, addressVal, bookingNumber);
+    const resolvedCoords = resolveCustomerCoordinates(areaVal, addressVal, bookingNumber, districtVal);
+    const estVisit = input.estimatedVisitingFee ?? 200;
+    const estLabMin = input.estimatedLabourMin ?? 300;
+    const estLabMax = input.estimatedLabourMax ?? 600;
     const newBooking: Booking = {
-      id: `book-${Date.now()}`,
+      id: input.id || `book-${Date.now()}`,
       bookingNumber,
-      customerId: currentUser?.id || 'guest',
-      customerName: currentUser?.name || input.customerName || 'Customer',
-      customerPhone: currentUser?.phone || input.customerPhone || '01700-000000',
-      customerCity: input.customerCity || currentUser?.city || 'Dhaka',
+      customerId: input.customerId || currentUser?.id || 'guest',
+      customerName: input.customerName || currentUser?.name || 'Customer',
+      customerPhone: input.customerPhone || currentUser?.phone || '01700-000000',
+      customerDivision: input.customerDivision || currentUser?.division || 'Dhaka',
+      customerDistrict: districtVal,
+      customerCity: districtVal,
       customerArea: areaVal,
       customerAddress: addressVal,
       customerLat: input.customerLat ?? resolvedCoords.lat,
@@ -265,13 +330,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       date: input.date || new Date().toISOString().split('T')[0],
       timeSlot: input.timeSlot || '10:00 AM - 12:00 PM',
       urgency: input.urgency || 'normal',
-      estimatedVisitingFee: input.estimatedVisitingFee || 200,
-      estimatedLabourMin: input.estimatedLabourMin || 300,
-      estimatedLabourMax: input.estimatedLabourMax || 600,
-      estimatedTotalMin: (input.estimatedVisitingFee || 200) + (input.estimatedLabourMin || 300),
-      estimatedTotalMax: (input.estimatedVisitingFee || 200) + (input.estimatedLabourMax || 600),
-      status: 'REQUESTED',
-      statusHistory: [
+      estimatedVisitingFee: estVisit,
+      estimatedLabourMin: estLabMin,
+      estimatedLabourMax: estLabMax,
+      estimatedTotalMin: input.estimatedTotalMin ?? (estVisit + estLabMin),
+      estimatedTotalMax: input.estimatedTotalMax ?? (estVisit + estLabMax),
+      finalTotal: input.finalTotal,
+      status: input.status || 'REQUESTED',
+      statusHistory: input.statusHistory || [
         {
           status: 'REQUESTED',
           timestamp: new Date().toISOString(),
@@ -279,11 +345,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           noteBn: 'গ্রাহক বুকিং আবেদন সম্পন্ন করেছেন।'
         }
       ],
-      paymentStatus: 'PENDING',
-      paymentMethod: 'cash',
+      paymentStatus: input.paymentStatus || 'PENDING',
+      paymentMethod: input.paymentMethod || 'cash',
       warrantyDays: input.warrantyDays || 14,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      createdAt: input.createdAt || new Date().toISOString(),
+      updatedAt: input.updatedAt || new Date().toISOString()
     };
 
     setBookings(prev => [newBooking, ...prev]);
@@ -363,6 +429,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createdAt: new Date().toISOString()
       };
       setNotifications(prev => [notif, ...prev]);
+    }
+
+    if (getStoredAuthToken()) {
+      void updateServerBookingStatus(bookingId, status, noteEn, noteBn).catch(() => {});
     }
   };
 
@@ -591,7 +661,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const newClaim: WarrantyClaim = {
       ...claim,
-      id: `war-${Date.now()}`,
+      id: `SRV-WRN-${String(Math.floor(100000 + Math.random() * 900000))}`,
+      bookingNumber: toServexaId(claim.bookingNumber),
       technicianId: targetTechId,
       technicianName: claim.technicianName || relatedBooking?.technicianName || relatedTech?.name || 'টেকনিশিয়ান',
       technicianPhone: claim.technicianPhone || relatedBooking?.technicianPhone || relatedTech?.phone || '',
@@ -614,10 +685,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `notif-war-admin-${Date.now()}`,
       userId: 'user-admin-demo',
       role: 'ADMIN',
-      titleEn: `New Warranty Claim #${newClaim.bookingNumber}`,
-      titleBn: `🛡️ নতুন ওয়ারেন্টি ক্লেইম আবেদন (#${newClaim.bookingNumber})`,
-      messageEn: `${newClaim.customerName} submitted a warranty claim for ${newClaim.serviceName} (Technician: ${newClaim.technicianName}).`,
-      messageBn: `${newClaim.customerName} (${newClaim.technicianName}-এর কাজের ওপর) ফ্রি ওয়ারেন্টি ক্লেইম করেছেন। অ্যাডমিন অনুমোদন প্রয়োজন।`,
+      titleEn: `New Warranty Claim #${newClaim.id}`,
+      titleBn: `🛡️ নতুন ওয়ারেন্টি ক্লেইম আবেদন (#${newClaim.id})`,
+      messageEn: `${newClaim.customerName} submitted a warranty claim for ${newClaim.serviceName} (${newClaim.bookingNumber}, Tech: ${newClaim.technicianName}).`,
+      messageBn: `${newClaim.customerName} (${newClaim.technicianName}-এর ${newClaim.bookingNumber} কাজের ওপর) ফ্রি ওয়ারেন্টি ক্লেইম করেছেন। অ্যাডমিন অনুমোদন প্রয়োজন।`,
       type: 'warranty',
       link: '/admin/dashboard',
       isRead: false,
@@ -658,10 +729,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: `notif-war-tech-${ts}`,
         userId: targetClaim.technicianId,
         role: 'TECHNICIAN',
-        titleEn: `Approved Warranty Job #${targetClaim.bookingNumber}`,
-        titleBn: `🛡️ অনুমোদিত ওয়ারেন্টি ক্লেইম (#${targetClaim.bookingNumber})`,
-        messageEn: `Admin approved warranty claim for ${targetClaim.serviceName} and assigned it to you. Pick this warranty job now.`,
-        messageBn: `অ্যাডমিন "${targetClaim.serviceName}"-এর ওয়ারেন্টি ক্লেইম অনুমোদন করে সরাসরি আপনার ড্যাশবোর্ডে পাঠিয়েছেন। অনুগ্রহ করে পিক করুন।`,
+        titleEn: `Approved Warranty Job #${targetClaim.id}`,
+        titleBn: `🛡️ অনুমোদিত ওয়ারেন্টি ক্লেইম (#${targetClaim.id})`,
+        messageEn: `Admin approved warranty claim #${targetClaim.id} (${targetClaim.bookingNumber}) for ${targetClaim.serviceName} and assigned it to you.`,
+        messageBn: `অ্যাডমিন "${targetClaim.serviceName}"-এর ওয়ারেন্টি ক্লেইম (#${targetClaim.id}) অনুমোদন করে সরাসরি আপনার ড্যাশবোর্ডে পাঠিয়েছেন। অনুগ্রহ করে পিক করুন।`,
         type: 'warranty',
         link: '/technician/dashboard',
         isRead: false,
@@ -674,8 +745,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         role: 'CUSTOMER',
         titleEn: `Warranty Claim Approved`,
         titleBn: `✅ আপনার ওয়ারেন্টি ক্লেইম অনুমোদিত হয়েছে`,
-        messageEn: `Admin approved claim #${targetClaim.bookingNumber} and dispatched it to ${targetClaim.technicianName || 'your technician'}.`,
-        messageBn: `অ্যাডমিন আপনার ওয়ারেন্টি ক্লেইম (#${targetClaim.bookingNumber}) অনুমোদন করে টেকনিশিয়ান ${targetClaim.technicianName || ''}-এর কাছে পাঠিয়েছেন।`,
+        messageEn: `Admin approved claim #${targetClaim.id} (${targetClaim.bookingNumber}) and dispatched it to ${targetClaim.technicianName || 'your technician'}.`,
+        messageBn: `অ্যাডমিন আপনার ওয়ারেন্টি ক্লেইম (#${targetClaim.id}) অনুমোদন করে টেকনিশিয়ান ${targetClaim.technicianName || ''}-এর কাছে পাঠিয়েছেন।`,
         type: 'warranty',
         link: '/customer/dashboard',
         isRead: false,
@@ -688,8 +759,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         role: 'CUSTOMER',
         titleEn: `Warranty Claim Update`,
         titleBn: `ওয়ারেন্টি ক্লেইম পর্যালোচনা সম্পন্ন`,
-        messageEn: note || `Warranty claim #${targetClaim.bookingNumber} was not eligible.`,
-        messageBn: note || `ওয়ারেন্টি ক্লেইম (#${targetClaim.bookingNumber}) অনুমোদিত হয়নি।`,
+        messageEn: note || `Warranty claim #${targetClaim.id} was not eligible.`,
+        messageBn: note || `ওয়ারেন্টি ক্লেইম (#${targetClaim.id}) অনুমোদিত হয়নি।`,
         type: 'warranty',
         link: '/customer/dashboard',
         isRead: false,
@@ -702,8 +773,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         role: 'CUSTOMER',
         titleEn: `Technician Picked Warranty Claim`,
         titleBn: `🔧 টেকনিশিয়ান ওয়ারেন্টি কাজ পিক করেছেন`,
-        messageEn: `${targetClaim.technicianName || 'Technician'} accepted your warranty service for #${targetClaim.bookingNumber}.`,
-        messageBn: `${targetClaim.technicianName || 'টেকনিশিয়ান'} আপনার ফ্রি ওয়ারেন্টি কাজ (#${targetClaim.bookingNumber}) পিক করেছেন।`,
+        messageEn: `${targetClaim.technicianName || 'Technician'} accepted your warranty service #${targetClaim.id}.`,
+        messageBn: `${targetClaim.technicianName || 'টেকনিশিয়ান'} আপনার ফ্রি ওয়ারেন্টি কাজ (#${targetClaim.id}) পিক করেছেন।`,
         type: 'warranty',
         link: '/customer/dashboard',
         isRead: false,
@@ -716,8 +787,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         role: 'CUSTOMER',
         titleEn: `Technician On The Way (Warranty)`,
         titleBn: `🚚 ওয়ারেন্টি সার্ভিসের জন্য টেকনিশিয়ান রওনা হয়েছেন`,
-        messageEn: `${targetClaim.technicianName || 'Technician'} is heading to ${targetClaim.customerAddress || 'your location'} for free warranty service.`,
-        messageBn: `${targetClaim.technicianName || 'টেকনিশিয়ান'} ফ্রি ওয়ারেন্টি সার্ভিস দিতে আপনার ঠিকানায় রওনা হয়েছেন।`,
+        messageEn: `${targetClaim.technicianName || 'Technician'} is heading to ${targetClaim.customerAddress || 'your location'} for free warranty service (#${targetClaim.id}).`,
+        messageBn: `${targetClaim.technicianName || 'টেকনিশিয়ান'} ফ্রি ওয়ারেন্টি সার্ভিস (#${targetClaim.id}) দিতে আপনার ঠিকানায় রওনা হয়েছেন।`,
         type: 'warranty',
         link: '/customer/dashboard',
         isRead: false,
@@ -730,8 +801,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         role: 'CUSTOMER',
         titleEn: `Warranty Service Resolved!`,
         titleBn: `✅ ওয়ারেন্টি সার্ভিস সম্পন্ন হয়েছে!`,
-        messageEn: `Warranty repair for ${targetClaim.serviceName} is completed. Please share your feedback.`,
-        messageBn: `"${targetClaim.serviceName}"-এর ফ্রি ওয়ারেন্টি সার্ভিস সম্পন্ন হয়েছে। অনুগ্রহ করে আপনার ফিডব্যাক জানান।`,
+        messageEn: `Warranty repair #${targetClaim.id} for ${targetClaim.serviceName} is completed. Please share your feedback.`,
+        messageBn: `"${targetClaim.serviceName}"-এর ফ্রি ওয়ারেন্টি সার্ভিস (#${targetClaim.id}) সম্পন্ন হয়েছে। অনুগ্রহ করে আপনার ফিডব্যাক জানান।`,
         type: 'warranty',
         link: '/customer/dashboard',
         isRead: false,
@@ -741,10 +812,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: `notif-war-res-a-${ts + 1}`,
         userId: 'user-admin-demo',
         role: 'ADMIN',
-        titleEn: `Warranty Claim Resolved (#${targetClaim.bookingNumber})`,
-        titleBn: `✔️ ওয়ারেন্টি ক্লেইম সম্পন্ন (#${targetClaim.bookingNumber})`,
+        titleEn: `Warranty Claim Resolved (#${targetClaim.id})`,
+        titleBn: `✔️ ওয়ারেন্টি ক্লেইম সম্পন্ন (#${targetClaim.id})`,
         messageEn: `${targetClaim.technicianName || 'Technician'} completed warranty service for ${targetClaim.customerName || 'customer'}.`,
-        messageBn: `${targetClaim.technicianName || 'টেকনিশিয়ান'} সফলভাবে ওয়ারেন্টি সার্ভিস সম্পন্ন করেছেন।`,
+        messageBn: `${targetClaim.technicianName || 'টেকনিশিয়ান'} সফলভাবে ওয়ারেন্টি সার্ভিস (#${targetClaim.id}) সম্পন্ন করেছেন।`,
         type: 'warranty',
         link: '/admin/dashboard',
         isRead: false,
@@ -796,14 +867,111 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  const registerNewTechnician = (user: User, preferredTechId?: string | null): Technician => {
+    const existing = technicians.find(t => t.userId === user.id || (user.email && t.email === user.email));
+    if (existing) return existing;
+
+    const newTech: Technician = {
+      id: preferredTechId || `tech-${Date.now()}`,
+      userId: user.id,
+      name: user.name,
+      email: user.email,
+      avatar: user.avatar,
+      bioEn: '',
+      bioBn: '',
+      rating: 5.0,
+      reviewCount: 0,
+      completedJobs: 0,
+      responseRate: 100,
+      startingPrice: 0,
+      visitingFee: 0,
+      experienceYears: 0,
+      phone: user.phone,
+      division: '',
+      district: '',
+      city: '',
+      primaryArea: '',
+      serviceAreas: [],
+      skills: [],
+      languages: ['বাংলা'],
+      availability: 'offline',
+      workingHours: '',
+      phoneVerified: true,
+      nidVerified: false,
+      skillVerified: false,
+      platformVerified: false,
+      nidFrontImage: '',
+      nidBackImage: '',
+      featured: false,
+      warrantyPeriodDays: 7,
+      healthScore: {
+        responseRate: 100,
+        onTimeRate: 100,
+        repeatRate: 100,
+        completedJobs: 0,
+        reviewScore: 5.0
+      },
+      portfolio: [],
+      aboutEn: '',
+      aboutBn: '',
+      emergencyAvailable: false,
+      serviceRadiusKm: 10
+    };
+
+    setTechnicians(prev => [newTech, ...prev]);
+
+    const adminNotif: NotificationItem = {
+      id: `notif-newtech-${Date.now()}`,
+      userId: 'user-admin-demo',
+      role: 'ADMIN',
+      titleEn: `New Technician Registered: ${user.name}`,
+      titleBn: `👷 নতুন টেকনিশিয়ান নিবন্ধন করেছেন: ${user.name}`,
+      messageEn: `${user.name} (${user.phone}) registered as a technician. Review their biodata, NID & skill test in Admin KYC.`,
+      messageBn: `${user.name} (📞 ${user.phone}) নতুন টেকনিশিয়ান হিসেবে সাইন আপ করেছেন। প্রোফাইল, NID ও "দক্ষতা উত্তীর্ণ" যাচাই করতে অ্যাডমিন ড্যাশবোর্ড দেখুন।`,
+      type: 'system',
+      link: '/admin/dashboard',
+      isRead: false,
+      createdAt: new Date().toISOString()
+    };
+    setNotifications(prev => [adminNotif, ...prev]);
+
+    return newTech;
+  };
+
   const verifyTechnicianField = (
     technicianId: string,
     field: 'phoneVerified' | 'nidVerified' | 'skillVerified' | 'platformVerified',
     value: boolean
   ) => {
+    const targetTech = technicians.find(t => t.id === technicianId);
     setTechnicians(prev =>
       prev.map(t => (t.id === technicianId ? { ...t, [field]: value } : t))
     );
+
+    if (targetTech && value && (field === 'skillVerified' || field === 'platformVerified' || field === 'nidVerified')) {
+      const titleMap = {
+        nidVerified: '✅ আপনার NID যাচাই সম্পন্ন হয়েছে',
+        skillVerified: '🎉 অভিনন্দন! আপনি "দক্ষতা উত্তীর্ণ" হিসেবে অনুমোদিত',
+        platformVerified: '🛡️ আপনি ভেরিফায়েড প্রো ব্যাজ পেয়েছেন'
+      };
+      const techNotif: NotificationItem = {
+        id: `notif-kyc-${Date.now()}`,
+        userId: targetTech.id,
+        role: 'TECHNICIAN',
+        titleEn: `Admin Verification Update`,
+        titleBn: titleMap[field],
+        messageEn: `Admin updated ${field} to verified on your profile.`,
+        messageBn:
+          field === 'skillVerified'
+            ? 'অ্যাডমিন আপনার বায়োডাটা ও NID যাচাই করে আপনাকে "দক্ষতা উত্তীর্ণ" হিসেবে অনুমোদন দিয়েছেন। এখন থেকে আপনি কাজ পিক করতে পারবেন!'
+            : 'অ্যাডমিন আপনার প্রোফাইল যাচাই আপডেট করেছেন।',
+        type: 'system',
+        link: '/technician/dashboard',
+        isRead: false,
+        createdAt: new Date().toISOString()
+      };
+      setNotifications(prev => [techNotif, ...prev]);
+    }
   };
 
   const updateTechnicianProfile = (technicianId: string, profileData: Partial<Technician>) => {
@@ -872,6 +1040,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteMaintenanceReminder,
         updateTechnicianAvailability,
         verifyTechnicianField,
+        registerNewTechnician,
         updateTechnicianProfile,
         deleteTechnician,
         addTechnicianPortfolio,

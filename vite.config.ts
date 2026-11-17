@@ -11,7 +11,7 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg'],
+        includeAssets: ['icon.svg', 'servexa_logo_3d.jpg'],
         manifest: {
           id: '/',
           name: 'Servexa – Smart Home Service & Technician Platform',

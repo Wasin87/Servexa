@@ -41,9 +41,11 @@ export const ProfessionalDetailPage: React.FC = () => {
   if (!technician) {
     return (
       <div className="py-20 text-center text-zinc-500">
-        <p className="text-lg font-bold">মিস্ত্রি প্রোফাইল খুঁজে পাওয়া যায়নি।</p>
+        <p className="text-lg font-bold">
+          {isBangla ? 'মিস্ত্রি প্রোফাইল খুঁজে পাওয়া যায়নি।' : 'Technician profile not found.'}
+        </p>
         <Link to="/professionals" className="mt-4 inline-block text-orange-600 underline text-sm">
-          সকল মিস্ত্রিদের তালিকায় ফিরে যান
+          {isBangla ? 'সকল মিস্ত্রিদের তালিকায় ফিরে যান' : 'Back to all technicians'}
         </Link>
       </div>
     );
@@ -55,7 +57,7 @@ export const ProfessionalDetailPage: React.FC = () => {
   // Fake dummy active booking if user wants to chat directly
   const activeBooking = bookings.find((b) => b.technicianId === technician.id) || {
     id: `book-chat-${technician.id}`,
-    bookingNumber: 'KGO-CHAT',
+    bookingNumber: 'SRV-CHAT',
     customerId: 'user-cust-demo',
     customerName: 'Customer',
     customerPhone: '01700-000000',
@@ -314,7 +316,7 @@ export const ProfessionalDetailPage: React.FC = () => {
 
             {techReviews.length === 0 ? (
               <p className="text-xs text-zinc-400 py-4 text-center">
-                এখনও কোনো রিভিউ যুক্ত করা হয়নি।
+                {isBangla ? 'এখনও কোনো রিভিউ যুক্ত করা হয়নি।' : 'No reviews added yet.'}
               </p>
             ) : (
               <div className="space-y-4 divide-y divide-zinc-100 dark:divide-zinc-800">

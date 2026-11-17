@@ -6,17 +6,19 @@ import { useApp } from '../../contexts/AppContext';
 import heroExactLogoLightImg from '../../assets/images/servexa_hero_light_face_2_1794763940647.jpg';
 import heroExactLogoDarkImg from '../../assets/images/servexa_hero_dark_face_1_1794763936142.jpg';
 
+import { BANGLADESH_DISTRICTS } from '../../data/bangladeshLocations';
+
 export const Hero: React.FC = () => {
   const { t, isBangla } = useLanguage();
   const { categories } = useApp();
   const navigate = useNavigate();
 
   const [selectedCategory, setSelectedCategory] = useState<string>('electrical');
-  const [selectedArea, setSelectedArea] = useState<string>('Mirpur');
+  const [selectedDistrict, setSelectedDistrict] = useState<string>('Dhaka');
 
   const handleQuickFind = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate(`/professionals?category=${selectedCategory}&area=${selectedArea}`);
+    navigate(`/professionals?category=${selectedCategory}&district=${selectedDistrict}`);
   };
 
   return (
@@ -135,7 +137,9 @@ export const Hero: React.FC = () => {
                     <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-amber-500 dark:text-amber-400" />
                     {isBangla ? 'ইনস্ট্যান্ট ফাইন্ডার' : 'Instant Finder'}
                   </span>
-                  <span className="text-zinc-500 dark:text-zinc-400 font-normal text-[7px] sm:text-[10px]">Dhaka</span>
+                  <span className="text-zinc-500 dark:text-zinc-400 font-normal text-[7px] sm:text-[10px]">
+                    {isBangla ? 'সারা বাংলাদেশ' : 'All Bangladesh'}
+                  </span>
                 </div>
 
                 <form onSubmit={handleQuickFind} className="grid grid-cols-1 sm:grid-cols-12 gap-1 sm:gap-2">
@@ -145,7 +149,7 @@ export const Hero: React.FC = () => {
                       onChange={(e) => setSelectedCategory(e.target.value)}
                       className="w-full px-1.5 py-0.5 sm:px-2.5 sm:py-2 text-[9px] sm:text-xs rounded-md sm:rounded-xl border border-zinc-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-900 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500 font-medium"
                     >
-                      {categories.slice(0, 10).map((cat) => (
+                      {categories.slice(0, 12).map((cat) => (
                         <option key={cat.id} value={cat.id} className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">
                           {isBangla ? cat.nameBn : cat.nameEn}
                         </option>
@@ -155,19 +159,16 @@ export const Hero: React.FC = () => {
 
                   <div className="sm:col-span-4">
                     <select
-                      value={selectedArea}
-                      onChange={(e) => setSelectedArea(e.target.value)}
+                      value={selectedDistrict}
+                      onChange={(e) => setSelectedDistrict(e.target.value)}
                       className="w-full px-1.5 py-0.5 sm:px-2.5 sm:py-2 text-[9px] sm:text-xs rounded-md sm:rounded-xl border border-zinc-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-900 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500 font-medium"
                     >
-                      <option value="Mirpur">মিরপুর (Mirpur)</option>
-                      <option value="Dhanmondi">ধানমন্ডি (Dhanmondi)</option>
-                      <option value="Uttara">উত্তরা (Uttara)</option>
-                      <option value="Mohammadpur">মোহাম্মদপুর (Mohammadpur)</option>
-                      <option value="Gulshan">গুলশান (Gulshan)</option>
-                      <option value="Banani">বনানী (Banani)</option>
-                      <option value="Bashundhara">বসুন্ধরা (Bashundhara)</option>
-                      <option value="Farmgate">ফার্মগেট (Farmgate)</option>
-                      <option value="Badda">বাড্ডা (Badda)</option>
+                      <option value="all">{isBangla ? 'সকল জেলা (৬৪)' : 'All Districts (64)'}</option>
+                      {BANGLADESH_DISTRICTS.map((dist) => (
+                        <option key={dist.id} value={dist.nameEn} className="bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white">
+                          {isBangla ? `${dist.nameBn} (${dist.nameEn})` : dist.nameEn}
+                        </option>
+                      ))}
                     </select>
                   </div>
 

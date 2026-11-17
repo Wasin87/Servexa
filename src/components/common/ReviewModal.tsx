@@ -11,12 +11,12 @@ interface ReviewModalProps {
   onClose: () => void;
 }
 
-const FEEDBACK_QUICK_TAGS_BN = [
-  'সময়মতো এসেছেন',
-  'নিখুঁত কাজ',
-  'ভদ্র ব্যবহার',
-  'ন্যায্য মূল্য',
-  'পরিচ্ছন্নতা বজায় রেখেছেন'
+const FEEDBACK_QUICK_TAGS = [
+  { bn: 'সময়মতো এসেছেন', en: 'Arrived on time' },
+  { bn: 'নিখুঁত কাজ', en: 'Quality workmanship' },
+  { bn: 'ভদ্র ব্যবহার', en: 'Polite behavior' },
+  { bn: 'ন্যায্য মূল্য', en: 'Fair pricing' },
+  { bn: 'পরিচ্ছন্নতা বজায় রেখেছেন', en: 'Clean work area' }
 ];
 
 export const ReviewModal: React.FC<ReviewModalProps> = ({ booking, isOpen, onClose }) => {
@@ -35,12 +35,6 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ booking, isOpen, onClo
 
   if (!isOpen) return null;
 
-  const toggleTag = (tag: string) => {
-    setSelectedTags(prev =>
-      prev.includes(tag) ? prev.filter(item => item !== tag) : [...prev, tag]
-    );
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -48,7 +42,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ booking, isOpen, onClo
     submitReview({
       bookingId: booking.id,
       customerId: currentUser?.id || booking.customerId || 'user-cust-demo',
-      customerName: currentUser?.name || booking.customerName || 'গ্রাহক',
+      customerName: currentUser?.name || booking.customerName || (isBangla ? 'গ্রাহক' : 'Customer'),
       customerAvatar: currentUser?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80',
       technicianId: booking.technicianId,
       overallRating,
@@ -57,8 +51,12 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ booking, isOpen, onClo
       punctuality,
       priceFairness,
       feedbackTags: selectedTags,
-      comment: comment.trim() || 'চমৎকার ও বিশ্বস্ত সার্ভিস! সমস্যার দ্রুত ও স্থায়ী সমাধান পেয়েছি।',
-      serviceName: booking.serviceNameBn
+      comment:
+        comment.trim() ||
+        (isBangla
+          ? 'চমৎকার ও বিশ্বস্ত সার্ভিস! সমস্যার দ্রুত ও স্থায়ী সমাধান পেয়েছি।'
+          : 'Great and trustworthy service! The issue was fixed quickly and cleanly.'),
+      serviceName: isBangla ? booking.serviceNameBn : booking.serviceNameEn
     });
 
     setIsSubmitting(false);
@@ -94,7 +92,9 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ booking, isOpen, onClo
             <h3 className="font-black text-base text-zinc-900 dark:text-zinc-100">
               {t.review.title}
             </h3>
-            <p className="text-xs text-zinc-500 mt-0.5">{booking.technicianName} · {booking.serviceNameBn}</p>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              {booking.technicianName} · {isBangla ? booking.serviceNameBn : booking.serviceNameEn}
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -110,7 +110,9 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ booking, isOpen, onClo
           <div className="flex items-center justify-between p-3.5 rounded-2xl bg-orange-50/70 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-900/40">
             <div>
               <span className="font-black text-xs text-zinc-900 dark:text-zinc-100 block">{t.review.overall}</span>
-              <span className="text-[11px] text-orange-600 font-bold">{overallRating} / 5 স্টার</span>
+              <span className="text-[11px] text-orange-600 font-bold">
+                {overallRating} / 5 {isBangla ? 'স্টার' : 'Stars'}
+              </span>
             </div>
             {renderStarSelector(overallRating, setOverallRating)}
           </div>
@@ -141,13 +143,20 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ booking, isOpen, onClo
               {isBangla ? 'দ্রুত ফিডব্যাক ট্যাগ নির্বাচন করুন:' : 'Quick Feedback Highlights:'}
             </label>
             <div className="flex flex-wrap gap-1.5">
-              {FEEDBACK_QUICK_TAGS_BN.map(tag => {
-                const active = selectedTags.includes(tag);
+              {FEEDBACK_QUICK_TAGS.map(item => {
+                const tagLabel = isBangla ? item.bn : item.en;
+                const active = selectedTags.includes(item.bn) || selectedTags.includes(item.en);
                 return (
                   <button
-                    key={tag}
+                    key={item.en}
                     type="button"
-                    onClick={() => toggleTag(tag)}
+                    onClick={() => {
+                      if (active) {
+                        setSelectedTags(prev => prev.filter(t => t !== item.bn && t !== item.en));
+                      } else {
+                        setSelectedTags(prev => [...prev, tagLabel]);
+                      }
+                    }}
                     className={`px-2.5 py-1 rounded-xl text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer border ${
                       active
                         ? 'bg-orange-600 text-white border-orange-600 shadow-xs'
@@ -155,7 +164,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ booking, isOpen, onClo
                     }`}
                   >
                     {active && <Check className="w-3 h-3" />}
-                    <span>{tag}</span>
+                    <span>{tagLabel}</span>
                   </button>
                 );
               })}
@@ -171,7 +180,11 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({ booking, isOpen, onClo
               rows={3}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="মিস্ত্রি সময়মতো এসেছিলেন? কাজের অভিজ্ঞতা কেমন ছিল লিখুন..."
+              placeholder={
+                isBangla
+                  ? 'মিস্ত্রি সময়মতো এসেছিলেন? কাজের অভিজ্ঞতা কেমন ছিল লিখুন...'
+                  : 'Did the technician arrive on time? Share your experience...'
+              }
               className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500/40"
             />
           </div>

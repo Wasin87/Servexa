@@ -4,11 +4,12 @@
  */
 
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { AuthProvider } from './contexts/AuthContext';
-import { AppProvider } from './contexts/AppContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AppProvider, useApp } from './contexts/AppContext';
+import { calculateTechnicianCompletion } from './utils/profileCompletion';
 
 import { SplashLoader } from './components/common/SplashLoader';
 import { FloatingPWAWidget } from './components/common/FloatingPWAWidget';
@@ -42,6 +43,33 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { DashboardRouter } from './pages/DashboardRouter';
 import { NotFoundPage } from './pages/NotFoundPage';
 
+const TechnicianVerificationGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { currentUser } = useAuth();
+  const { technicians } = useApp();
+  const location = useLocation();
+
+  if (currentUser?.role === 'TECHNICIAN') {
+    const myTech = technicians.find(t => t.userId === currentUser.id);
+    if (myTech) {
+      const comp = calculateTechnicianCompletion(myTech);
+      const isApproved = !!myTech.skillVerified && comp.isMinReady;
+      const allowedPaths = [
+        '/technician/dashboard',
+        '/technician/jobs',
+        '/technician/portfolio',
+        '/login',
+        '/register'
+      ];
+      const isAllowed = allowedPaths.some(p => location.pathname.startsWith(p));
+      if (!isApproved && !isAllowed) {
+        return <Navigate to="/technician/dashboard?tab=profile" replace />;
+      }
+    }
+  }
+
+  return <>{children}</>;
+};
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -51,43 +79,45 @@ export default function App() {
             <SplashLoader />
             <BrowserRouter>
               <ScrollToTop />
-              <div className="min-h-screen flex flex-col bg-stone-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-200 selection:bg-orange-500 selection:text-white">
+              <div className="min-h-screen flex flex-col overflow-x-clip bg-stone-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-200 selection:bg-orange-500 selection:text-white">
                 <Navbar />
                 <main className="flex-1 pb-16 lg:pb-0">
-                  <Routes>
-                    <Route path="/" element={<HomePage />} />
-                    <Route path="/services" element={<ServicesPage />} />
-                    <Route path="/services/:id" element={<ServicesPage />} />
-                    <Route path="/professionals" element={<ProfessionalsPage />} />
-                    <Route path="/professionals/:id" element={<ProfessionalDetailPage />} />
-                    <Route path="/search" element={<SearchPage />} />
-                    <Route path="/book" element={<BookPage />} />
-                    <Route path="/booking/:id" element={<BookingDetailPage />} />
-                    <Route path="/emergency" element={<EmergencyPage />} />
-                    <Route path="/heatmap" element={<HeatmapPage />} />
-                    <Route path="/map" element={<MapPage />} />
-                    <Route path="/how-it-works" element={<HowItWorksPage />} />
-                    <Route path="/safety" element={<SafetyPage />} />
-                    <Route path="/become-professional" element={<BecomeProfessionalPage />} />
-                    <Route path="/login" element={<LoginPage />} />
-                    <Route path="/register" element={<RegisterPage />} />
-                    <Route path="/dashboard" element={<DashboardRouter />} />
-                    <Route path="/customer/dashboard" element={<CustomerDashboard />} />
-                    <Route path="/customer/bookings" element={<CustomerDashboard />} />
-                    <Route path="/customer/favorites" element={<CustomerDashboard />} />
-                    <Route path="/customer/messages" element={<CustomerDashboard />} />
-                    <Route path="/technician/dashboard" element={<TechnicianDashboard />} />
-                    <Route path="/technician/jobs" element={<TechnicianDashboard />} />
-                    <Route path="/technician/earnings" element={<TechnicianDashboard />} />
-                    <Route path="/technician/messages" element={<TechnicianDashboard />} />
-                    <Route path="/technician/portfolio" element={<TechnicianDashboard />} />
-                    <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                    <Route path="/admin/users" element={<AdminDashboard />} />
-                    <Route path="/admin/technicians" element={<AdminDashboard />} />
-                    <Route path="/admin/bookings" element={<AdminDashboard />} />
-                    <Route path="/admin/reports" element={<AdminDashboard />} />
-                    <Route path="*" element={<NotFoundPage />} />
-                  </Routes>
+                  <TechnicianVerificationGuard>
+                    <Routes>
+                      <Route path="/" element={<HomePage />} />
+                      <Route path="/services" element={<ServicesPage />} />
+                      <Route path="/services/:id" element={<ServicesPage />} />
+                      <Route path="/professionals" element={<ProfessionalsPage />} />
+                      <Route path="/professionals/:id" element={<ProfessionalDetailPage />} />
+                      <Route path="/search" element={<SearchPage />} />
+                      <Route path="/book" element={<BookPage />} />
+                      <Route path="/booking/:id" element={<BookingDetailPage />} />
+                      <Route path="/emergency" element={<EmergencyPage />} />
+                      <Route path="/heatmap" element={<HeatmapPage />} />
+                      <Route path="/map" element={<MapPage />} />
+                      <Route path="/how-it-works" element={<HowItWorksPage />} />
+                      <Route path="/safety" element={<SafetyPage />} />
+                      <Route path="/become-professional" element={<BecomeProfessionalPage />} />
+                      <Route path="/login" element={<LoginPage />} />
+                      <Route path="/register" element={<RegisterPage />} />
+                      <Route path="/dashboard" element={<DashboardRouter />} />
+                      <Route path="/customer/dashboard" element={<CustomerDashboard />} />
+                      <Route path="/customer/bookings" element={<CustomerDashboard />} />
+                      <Route path="/customer/favorites" element={<CustomerDashboard />} />
+                      <Route path="/customer/messages" element={<CustomerDashboard />} />
+                      <Route path="/technician/dashboard" element={<TechnicianDashboard />} />
+                      <Route path="/technician/jobs" element={<TechnicianDashboard />} />
+                      <Route path="/technician/earnings" element={<TechnicianDashboard />} />
+                      <Route path="/technician/messages" element={<TechnicianDashboard />} />
+                      <Route path="/technician/portfolio" element={<TechnicianDashboard />} />
+                      <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                      <Route path="/admin/users" element={<AdminDashboard />} />
+                      <Route path="/admin/technicians" element={<AdminDashboard />} />
+                      <Route path="/admin/bookings" element={<AdminDashboard />} />
+                      <Route path="/admin/reports" element={<AdminDashboard />} />
+                      <Route path="*" element={<NotFoundPage />} />
+                    </Routes>
+                  </TechnicianVerificationGuard>
                 </main>
                 <Footer />
                 <MobileNav />

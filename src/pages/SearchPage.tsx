@@ -15,10 +15,12 @@ export const SearchPage: React.FC = () => {
 
   const matchedTechs = technicians.filter(
     (tech) =>
-      tech.name.toLowerCase().includes(query.toLowerCase()) ||
-      tech.primaryArea.toLowerCase().includes(query.toLowerCase()) ||
-      tech.serviceAreas.some(a => a.toLowerCase() === query.toLowerCase()) ||
-      tech.skills.some(s => s.toLowerCase().includes(query.toLowerCase()))
+      (tech.skillVerified || tech.platformVerified) &&
+      (tech.name.toLowerCase().includes(query.toLowerCase()) ||
+        (tech.district || '').toLowerCase().includes(query.toLowerCase()) ||
+        tech.primaryArea.toLowerCase().includes(query.toLowerCase()) ||
+        tech.serviceAreas.some(a => a.toLowerCase() === query.toLowerCase()) ||
+        tech.skills.some(s => s.toLowerCase().includes(query.toLowerCase())))
   );
 
   const matchedCategories = categories.filter(
@@ -54,8 +56,11 @@ export const SearchPage: React.FC = () => {
 
       {/* Quick Search Tags */}
       <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
-        <span className="text-zinc-400">জনপ্রিয় খোঁজ:</span>
-        {['মিরপুর ইলেকট্রিশিয়ান', 'পানির পাইপ লিক', 'এসি গ্যাস রিফিল', 'তালা আটকে গেছে', 'ধানমন্ডি প্লাম্বার'].map((tag) => (
+        <span className="text-zinc-400">{isBangla ? 'জনপ্রিয় খোঁজ:' : 'Popular Searches:'}</span>
+        {(isBangla
+          ? ['মিরপুর ইলেকট্রিশিয়ান', 'পানির পাইপ লিক', 'এসি গ্যাস রিফিল', 'তালা আটকে গেছে', 'ধানমন্ডি প্লাম্বার']
+          : ['Mirpur Electrician', 'Water Pipe Leak', 'AC Gas Refill', 'Door Lock Jammed', 'Dhanmondi Plumber']
+        ).map((tag) => (
           <button
             key={tag}
             type="button"
@@ -73,17 +78,21 @@ export const SearchPage: React.FC = () => {
           <div className="space-y-1">
             <div className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 dark:text-orange-400">
               <Sparkles className="w-4 h-4" />
-              <span>শনাক্তকৃত সমাধান: {diagnosis.categoryNameBn} ({diagnosis.confidence}% ম্যাচ)</span>
+              <span>
+                {isBangla
+                  ? `শনাক্তকৃত সমাধান: ${diagnosis.categoryNameBn} (${diagnosis.confidence}% ম্যাচ)`
+                  : `Detected Match: ${diagnosis.categoryNameEn} (${diagnosis.confidence}% match)`}
+              </span>
             </div>
             <p className="text-xs text-zinc-600 dark:text-zinc-400">
-              {diagnosis.reasoningBn}
+              {isBangla ? diagnosis.reasoningBn : diagnosis.reasoningEn}
             </p>
           </div>
           <Link
             to={`/book?categoryId=${diagnosis.categoryId}&desc=${encodeURIComponent(query)}`}
             className="px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs shrink-0 text-center"
           >
-            সরাসরি বুকিং শুরু করুন
+            {isBangla ? 'সরাসরি বুকিং শুরু করুন' : 'Start Direct Booking'}
           </Link>
         </div>
       )}
@@ -92,7 +101,7 @@ export const SearchPage: React.FC = () => {
       {matchedCategories.length > 0 && (
         <div className="space-y-3">
           <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-            মিলে যাওয়া সার্ভিস ({matchedCategories.length})
+            {isBangla ? `মিলে যাওয়া সার্ভিস (${matchedCategories.length})` : `Matched Services (${matchedCategories.length})`}
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {matchedCategories.map((c) => (
@@ -108,7 +117,9 @@ export const SearchPage: React.FC = () => {
                   <div className="font-bold text-xs text-zinc-900 dark:text-zinc-100 truncate">
                     {isBangla ? c.nameBn : c.nameEn}
                   </div>
-                  <div className="text-[10px] text-zinc-400">৳{c.startingPrice} থেকে</div>
+                  <div className="text-[10px] text-zinc-400">
+                    {isBangla ? `৳${c.startingPrice} থেকে` : `From ৳${c.startingPrice}`}
+                  </div>
                 </div>
               </Link>
             ))}
@@ -120,7 +131,7 @@ export const SearchPage: React.FC = () => {
       {matchedTechs.length > 0 && (
         <div className="space-y-3">
           <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-            উপযুক্ত টেকনিশিয়ান ({matchedTechs.length})
+            {isBangla ? `উপযুক্ত টেকনিশিয়ান (${matchedTechs.length})` : `Matched Technicians (${matchedTechs.length})`}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {matchedTechs.map((tech) => (
@@ -143,11 +154,13 @@ export const SearchPage: React.FC = () => {
                     <div className="flex items-center gap-1 text-[11px] text-amber-500 font-bold">
                       <Star className="w-3 h-3 fill-amber-400" />
                       <span>{tech.rating}</span>
-                      <span className="text-zinc-400 font-normal">({tech.completedJobs} কাজ)</span>
+                      <span className="text-zinc-400 font-normal">
+                        ({tech.completedJobs} {isBangla ? 'কাজ' : 'jobs'})
+                      </span>
                     </div>
                     <div className="text-[10px] text-zinc-400 flex items-center gap-1 mt-0.5">
                       <MapPin className="w-3 h-3 text-orange-500" />
-                      <span className="truncate">{tech.primaryArea}, ঢাকা</span>
+                      <span className="truncate">{tech.primaryArea}, {tech.district || tech.city}</span>
                     </div>
                   </div>
                 </div>
@@ -164,7 +177,7 @@ export const SearchPage: React.FC = () => {
                     className="py-1.5 text-center text-xs font-semibold rounded-xl border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-center gap-1"
                   >
                     <User className="w-3 h-3" />
-                    <span>প্রোফাইল</span>
+                    <span>{isBangla ? 'প্রোফাইল' : 'Profile'}</span>
                   </Link>
                 </div>
               </div>

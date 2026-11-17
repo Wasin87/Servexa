@@ -1,16 +1,18 @@
 import React from 'react';
 import { Invoice } from '../../types';
-import { X, Printer, Download, CheckCircle, ShieldCheck } from 'lucide-react';
+import { BookingPriceSnapshot } from '../../types/finance';
+import { X, Printer, CheckCircle, ShieldCheck } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Logo } from './Logo';
 
 interface InvoiceModalProps {
   invoice: Invoice;
+  snapshot?: BookingPriceSnapshot | null;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, isOpen, onClose }) => {
+export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, snapshot, isOpen, onClose }) => {
   const { t, isBangla } = useLanguage();
 
   if (!isOpen) return null;
@@ -18,6 +20,15 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, isOpen, onC
   const handlePrint = () => {
     window.print();
   };
+
+  const displayVisitingFee = snapshot ? snapshot.visitingFee : invoice.visitingFee;
+  const displayServiceOrLabour = snapshot ? snapshot.servicePrice : invoice.labourCost;
+  const displayMaterialCost = snapshot ? snapshot.materialCost : invoice.partsCost;
+  const displayDiscount = snapshot ? snapshot.discountAmount : invoice.discount;
+  const displayTotal = snapshot ? snapshot.finalAgreedAmount : invoice.total;
+  const displaySurcharges = snapshot
+    ? snapshot.emergencyCharge + snapshot.nightCharge + snapshot.weekendCharge
+    : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
@@ -31,6 +42,11 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, isOpen, onC
             <span className="text-xs text-zinc-500 font-mono">
               #{invoice.invoiceNumber}
             </span>
+            {snapshot && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                {isBangla ? `স্ন্যাপশট v${snapshot.ruleVersion}` : `Snapshot v${snapshot.ruleVersion}`}
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -59,10 +75,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, isOpen, onC
             <div>
               <Logo size="lg" />
               <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                Servexa Technologies Ltd. · Dhaka, Bangladesh
+                {isBangla ? 'সার্ভেক্সা টেকনোলজিস লিমিটেড · ঢাকা, বাংলাদেশ' : 'Servexa Technologies Ltd. · Dhaka, Bangladesh'}
               </p>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Helpline: 01700-000000 · support@servexa.com
+                {isBangla ? 'হেল্পলাইন: ০১৭০০-০০০০০০ · support@servexa.com' : 'Helpline: 01700-000000 · support@servexa.com'}
               </p>
             </div>
             <div className="text-left sm:text-right">
@@ -76,7 +92,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, isOpen, onC
                 {t.invoice.date}: {invoice.issueDate}
               </div>
               <div className="text-xs text-zinc-500">
-                বুকিং নং: {invoice.bookingNumber}
+                {isBangla ? `বুকিং নং: ${invoice.bookingNumber}` : `Booking No: ${invoice.bookingNumber}`}
               </div>
             </div>
           </div>
@@ -114,40 +130,95 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, isOpen, onC
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
                   <th className="py-2.5">{t.invoice.itemDescription}</th>
-                  <th className="py-2.5 text-right">পরিমাণ (৳ / BDT)</th>
+                  <th className="py-2.5 text-right">{isBangla ? 'পরিমাণ (৳ / BDT)' : 'Amount (৳ / BDT)'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                 <tr>
                   <td className="py-3">
                     <div className="font-medium text-zinc-900 dark:text-zinc-100">{invoice.serviceName}</div>
-                    <div className="text-xs text-zinc-500">{t.invoice.visitingFee} (Doorstep Inspection)</div>
+                    <div className="text-xs text-zinc-500">
+                      {t.invoice.visitingFee} ({isBangla ? 'বাসায় গিয়ে পরিদর্শন' : 'Doorstep Inspection'})
+                    </div>
                   </td>
-                  <td className="py-3 text-right font-medium">৳{invoice.visitingFee}</td>
+                  <td className="py-3 text-right font-medium">৳{displayVisitingFee}</td>
                 </tr>
                 <tr>
                   <td className="py-3">
                     <div className="font-medium text-zinc-900 dark:text-zinc-100">{t.invoice.labourCharge}</div>
-                    <div className="text-xs text-zinc-500">কারিগরি শ্রম ও সার্ভিস চার্জ</div>
+                    <div className="text-xs text-zinc-500">
+                      {isBangla ? 'কারিগরি শ্রম ও মূল সার্ভিস চার্জ' : 'Technical labor & core service charge'}
+                    </div>
                   </td>
-                  <td className="py-3 text-right font-medium">৳{invoice.labourCost}</td>
+                  <td className="py-3 text-right font-medium">৳{displayServiceOrLabour}</td>
                 </tr>
-                {invoice.partsCost > 0 && (
+                {snapshot && snapshot.hourlyCharge > 0 && (
+                  <tr>
+                    <td className="py-3">
+                      <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                        {isBangla ? 'ঘণ্টাভিত্তিক সার্ভিস চার্জ' : 'Hourly Service Charge'}
+                      </div>
+                      <div className="text-xs text-zinc-500">
+                        {isBangla ? 'অতিরিক্ত কাজের সময় চার্জ' : 'Additional work-hour charge'}
+                      </div>
+                    </td>
+                    <td className="py-3 text-right font-medium">৳{snapshot.hourlyCharge}</td>
+                  </tr>
+                )}
+                {displaySurcharges > 0 && (
+                  <tr>
+                    <td className="py-3">
+                      <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                        {isBangla ? 'জরুরি / রাত / ছুটির দিন সারচার্জ' : 'Emergency / Night / Weekend Surcharge'}
+                      </div>
+                      <div className="text-xs text-zinc-500">
+                        {isBangla ? 'বিশেষ সময় বা জরুরি সেবা চার্জ' : 'Special schedule or emergency dispatch fee'}
+                      </div>
+                    </td>
+                    <td className="py-3 text-right font-medium">৳{displaySurcharges}</td>
+                  </tr>
+                )}
+                {snapshot && snapshot.additionalChargesTotal > 0 && (
+                  <tr>
+                    <td className="py-3">
+                      <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                        {isBangla ? 'অনুমোদিত অতিরিক্ত কাজ' : 'Approved Extra Work'}
+                      </div>
+                      <div className="text-xs text-zinc-500">
+                        {isBangla ? 'গ্রাহক অনুমোদিত অতিরিক্ত কাজ ও চার্জ' : 'Customer-approved extra work'}
+                      </div>
+                    </td>
+                    <td className="py-3 text-right font-medium">৳{snapshot.additionalChargesTotal}</td>
+                  </tr>
+                )}
+                {displayMaterialCost > 0 && (
                   <tr>
                     <td className="py-3">
                       <div className="font-medium text-zinc-900 dark:text-zinc-100">{t.invoice.partsCharge}</div>
-                      <div className="text-xs text-zinc-500">প্রয়োজনীয় স্পেয়ার পার্টস বা মালামাল</div>
+                      <div className="text-xs text-zinc-500">
+                        {isBangla ? 'প্রয়োজনীয় স্পেয়ার পার্টস বা মালামাল' : 'Required spare parts or materials'}
+                        {snapshot && !snapshot.materialCostCommissionable
+                          ? isBangla
+                            ? ' (পাস-থ্রু / কমিশনমুক্ত)'
+                            : ' (Pass-through / Non-commissionable)'
+                          : ''}
+                      </div>
                     </td>
-                    <td className="py-3 text-right font-medium">৳{invoice.partsCost}</td>
+                    <td className="py-3 text-right font-medium">৳{displayMaterialCost}</td>
                   </tr>
                 )}
-                {invoice.discount > 0 && (
+                {displayDiscount > 0 && (
                   <tr>
                     <td className="py-3 text-emerald-600 dark:text-emerald-400">
-                      {t.invoice.discount} (প্রমোশনাল ছাড়)
+                      {t.invoice.discount}{' '}
+                      {snapshot?.promoCode
+                        ? `(${snapshot.promoCode})`
+                        : isBangla
+                        ? '(প্রমোশনাল ছাড়)'
+                        : '(Promo Discount)'}
                     </td>
                     <td className="py-3 text-right font-medium text-emerald-600 dark:text-emerald-400">
-                      -৳{invoice.discount}
+                      -৳{displayDiscount}
                     </td>
                   </tr>
                 )}
@@ -168,7 +239,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ invoice, isOpen, onC
             <div className="text-right w-full sm:w-auto">
               <div className="text-xs text-zinc-500">{t.invoice.total}</div>
               <div className="text-2xl font-extrabold text-orange-600 dark:text-orange-500">
-                ৳{invoice.total}
+                ৳{displayTotal}
               </div>
             </div>
           </div>

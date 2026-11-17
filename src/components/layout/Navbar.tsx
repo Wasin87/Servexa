@@ -34,7 +34,7 @@ import { useApp } from '../../contexts/AppContext';
 export const Navbar: React.FC = () => {
   const { t, isBangla } = useLanguage();
   const { currentUser, role, logout, quickDemoLogin } = useAuth();
-  const { notifications, markAllNotificationsRead } = useApp();
+  const { notifications, technicians, markNotificationRead } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -43,7 +43,25 @@ export const Navbar: React.FC = () => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [demoMenuOpen, setDemoMenuOpen] = useState(false);
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const myTech = currentUser?.role === 'TECHNICIAN'
+    ? technicians.find(tech => tech.userId === currentUser.id)
+    : undefined;
+
+  const visibleNotifications = currentUser
+    ? notifications.filter(n => {
+        if (n.role !== currentUser.role) return false;
+        if (currentUser.role === 'ADMIN') return true;
+        if (currentUser.role === 'CUSTOMER') {
+          return n.userId === currentUser.id || currentUser.id === 'user-cust-demo';
+        }
+        if (currentUser.role === 'TECHNICIAN') {
+          return n.userId === currentUser.id || (myTech ? n.userId === myTech.id : false);
+        }
+        return false;
+      })
+    : [];
+
+  const unreadCount = visibleNotifications.filter(n => !n.isRead).length;
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -55,7 +73,7 @@ export const Navbar: React.FC = () => {
 
   return (
     <header className="sticky top-0 z-[9999] w-full border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/95 dark:bg-[#0c0806]/95 backdrop-blur-xl shadow-xs transition-colors">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Left: Logo */}
         <div className="shrink-0 flex items-center">
           <Logo showTagline={false} size="md" />
@@ -137,17 +155,6 @@ export const Navbar: React.FC = () => {
               >
                 <span>🔥</span>
                 <span className="font-bold">{isBangla ? 'কাজের চাহিদা হিটম্যাপ' : 'Demand Hotspots'}</span>
-              </Link>
-              <Link
-                to="/map"
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all ${
-                  isActive('/map')
-                    ? 'bg-orange-500/15 text-orange-600 dark:text-orange-400 font-bold border border-orange-500/30'
-                    : 'text-zinc-700 dark:text-zinc-300 hover:text-orange-600 dark:hover:text-orange-400'
-                }`}
-              >
-                <span>🗺️</span>
-                <span>{isBangla ? 'সার্ভিস ম্যাপ' : 'Live Map'}</span>
               </Link>
               <Link
                 to="/safety"
@@ -259,7 +266,7 @@ export const Navbar: React.FC = () => {
                     </span>
                     {unreadCount > 0 && (
                       <button
-                        onClick={markAllNotificationsRead}
+                        onClick={() => visibleNotifications.forEach(n => !n.isRead && markNotificationRead(n.id))}
                         className="text-[11px] text-orange-600 dark:text-orange-400 hover:underline cursor-pointer"
                       >
                         {isBangla ? 'সব পড়া হয়েছে' : 'Mark all read'}
@@ -268,18 +275,19 @@ export const Navbar: React.FC = () => {
                   </div>
 
                   <div className="max-h-72 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800/60">
-                    {notifications.length === 0 ? (
+                    {visibleNotifications.length === 0 ? (
                       <div className="p-4 text-center text-xs text-zinc-500">
                         {isBangla ? 'কোনো নোটিফিকেশন নেই' : 'No notifications'}
                       </div>
                     ) : (
-                      notifications.map(n => (
+                      visibleNotifications.map(n => (
                         <div
                           key={n.id}
                           className={`p-3 text-xs hover:bg-zinc-50 dark:hover:bg-zinc-800/50 cursor-pointer transition-colors ${
                             !n.isRead ? 'bg-orange-50/40 dark:bg-orange-950/20' : ''
                           }`}
                           onClick={() => {
+                            if (!n.isRead) markNotificationRead(n.id);
                             setNotifDropdownOpen(false);
                             if (n.link) navigate(n.link);
                           }}
@@ -621,14 +629,6 @@ export const Navbar: React.FC = () => {
                 >
                   <span>🔥</span>
                   <span>{isBangla ? 'কাজের চাহিদা হটস্পট' : 'Demand Hotspots'}</span>
-                </Link>
-                <Link
-                  to="/map"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="py-2 px-3 rounded-xl text-zinc-800 dark:text-zinc-200 hover:bg-stone-100 dark:hover:bg-zinc-900 transition-colors flex items-center gap-2"
-                >
-                  <span>🗺️</span>
-                  <span>{isBangla ? 'সার্ভিস ম্যাপ' : 'Live Map'}</span>
                 </Link>
               </>
             )}

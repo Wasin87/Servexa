@@ -15,7 +15,7 @@ export type BookingStatus =
   | 'DISPUTED';
 
 export type PaymentStatus = 'PENDING' | 'PAID' | 'CASH_ON_SERVICE' | 'REFUNDED';
-export type PaymentMethod = 'cash' | 'bkash' | 'nagad';
+export type PaymentMethod = 'cash' | 'bkash' | 'nagad' | 'rocket' | 'card';
 
 export type WarrantyStatus = 'REQUESTED' | 'APPROVED' | 'ACCEPTED' | 'ON_THE_WAY' | 'RESOLVED' | 'REJECTED';
 export type DisputeStatus = 'OPEN' | 'UNDER_REVIEW' | 'RESOLVED' | 'REJECTED';
@@ -25,8 +25,11 @@ export interface User {
   name: string;
   email: string;
   phone: string;
+  password?: string;
   role: UserRole;
   avatar: string;
+  division?: string;
+  district?: string;
   city: string;
   area: string;
   address?: string;
@@ -84,6 +87,9 @@ export interface Technician {
   visitingFee: number;
   experienceYears: number;
   phone: string;
+  email?: string;
+  division?: string;
+  district?: string;
   city: string;
   primaryArea: string;
   serviceAreas: string[];
@@ -95,6 +101,8 @@ export interface Technician {
   nidVerified: boolean;
   skillVerified: boolean;
   platformVerified: boolean;
+  nidFrontImage?: string;
+  nidBackImage?: string;
   featured?: boolean;
   warrantyPeriodDays: number;
   healthScore: HealthScore;
@@ -153,10 +161,12 @@ export interface Invoice {
 
 export interface Booking {
   id: string;
-  bookingNumber: string; // e.g. KGO-2026-000123
+  bookingNumber: string; // e.g. SRV-2026-000123
   customerId: string;
   customerName: string;
   customerPhone: string;
+  customerDivision?: string;
+  customerDistrict?: string;
   customerCity: string;
   customerArea: string;
   customerAddress: string;

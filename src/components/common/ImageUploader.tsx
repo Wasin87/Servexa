@@ -5,6 +5,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 interface ImageUploaderProps {
   currentImage: string;
   onImageChange: (base64OrUrl: string) => void;
+  onRemove?: () => void;
   label?: string;
   shape?: 'circle' | 'square' | 'banner';
   className?: string;
@@ -14,6 +15,7 @@ interface ImageUploaderProps {
 export const ImageUploader: React.FC<ImageUploaderProps> = ({
   currentImage,
   onImageChange,
+  onRemove,
   label,
   shape = 'square',
   className = '',
@@ -23,6 +25,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [preview, setPreview] = useState<string>(currentImage);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Synchronize preview if currentImage changes externally
   React.useEffect(() => {
@@ -30,14 +33,15 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
   }, [currentImage]);
 
   const processFile = (file: File) => {
+    setUploadError(null);
     if (!file.type.startsWith('image/')) {
-      alert(isBangla ? 'অনুগ্রহ করে একটি ছবি ফাইল নির্বাচন করুন।' : 'Please select a valid image file.');
+      setUploadError(isBangla ? 'অনুগ্রহ করে একটি বৈধ ছবি ফাইল নির্বাচন করুন।' : 'Please select a valid image file.');
       return;
     }
 
     // Limit size to 10MB
     if (file.size > 10 * 1024 * 1024) {
-      alert(isBangla ? 'ছবির সাইজ ১০ মেগাবাইটের কম হতে হবে।' : 'Image size must be less than 10MB.');
+      setUploadError(isBangla ? 'ছবির সাইজ ১০ মেগাবাইটের কম হতে হবে।' : 'Image size must be less than 10MB.');
       return;
     }
 
@@ -187,6 +191,20 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
               <span>{isBangla ? 'ডিভাইস থেকে ছবি বেছে নিন' : 'Choose Photo File'}</span>
             </button>
 
+            {onRemove && preview && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPreview('');
+                  setUploadError(null);
+                  onRemove();
+                }}
+                className="px-3 py-2 rounded-xl border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 font-bold text-xs cursor-pointer"
+              >
+                {isBangla ? 'মুছে ফেলুন' : 'Remove'}
+              </button>
+            )}
+
             {showPresets && (
               <div className="flex items-center gap-1 text-[10px] text-zinc-400">
                 <span className="hidden sm:inline">বা ডেমো:</span>
@@ -196,6 +214,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
                     type="button"
                     onClick={() => {
                       setPreview(p.url);
+                      setUploadError(null);
                       onImageChange(p.url);
                     }}
                     className="px-2 py-1 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 font-bold hover:border-orange-500 hover:text-orange-600 cursor-pointer"
@@ -206,6 +225,11 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
               </div>
             )}
           </div>
+          {uploadError && (
+            <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400 pt-1">
+              ⚠️ {uploadError}
+            </p>
+          )}
         </div>
       </div>
     </div>

@@ -489,17 +489,20 @@ export function getRecommendationReasons(
   return reasons.slice(0, 3);
 }
 
+import { BANGLADESH_DISTRICTS, findDistrict } from '../data/bangladeshLocations';
+
 /**
- * Deterministic coordinate resolver for Dhaka areas & customer street addresses
+ * Deterministic coordinate resolver for All Bangladesh districts, areas & customer street addresses
  */
 export function resolveCustomerCoordinates(
   area?: string,
   address?: string,
-  seedKey?: string
+  seedKey?: string,
+  districtHint?: string
 ): { lat: number; lng: number; matchedAreaBn: string; matchedAreaEn: string } {
-  const combined = `${area || ''} ${address || ''}`.toLowerCase();
+  const combined = `${area || ''} ${address || ''} ${districtHint || ''}`.toLowerCase();
 
-  // Check DHAKA_AREAS keywords
+  // 1. Check DHAKA_AREAS keywords first for precise neighborhood coordinates
   let matched = DHAKA_AREAS.find(
     (a) =>
       combined.includes(a.nameEn.toLowerCase()) ||
@@ -523,10 +526,28 @@ export function resolveCustomerCoordinates(
     );
   }
 
-  const base = matched || DHAKA_AREAS[1]; // Default Dhanmondi if unknown
+  // 2. Check all 64 Bangladesh Districts & their areas
+  let matchedDistrict = findDistrict(districtHint) || BANGLADESH_DISTRICTS.find(
+    (d) =>
+      combined.includes(d.nameEn.toLowerCase()) ||
+      combined.includes(d.nameBn) ||
+      d.areas.some(a => combined.includes(a.nameEn.toLowerCase()) || combined.includes(a.nameBn))
+  );
+
+  const base = matched
+    ? matched
+    : matchedDistrict
+    ? {
+        nameEn: area || matchedDistrict.nameEn,
+        nameBn: area || matchedDistrict.nameBn,
+        lat: matchedDistrict.lat,
+        lng: matchedDistrict.lng,
+        keywords: []
+      }
+    : DHAKA_AREAS[1];
 
   // Small deterministic street offset (~150m - 450m) based on address/seedKey
-  const hashSource = `${area || ''}|${address || ''}|${seedKey || ''}`;
+  const hashSource = `${districtHint || ''}|${area || ''}|${address || ''}|${seedKey || ''}`;
   let hash = 0;
   for (let i = 0; i < hashSource.length; i++) {
     hash = ((hash << 5) - hash + hashSource.charCodeAt(i)) | 0;

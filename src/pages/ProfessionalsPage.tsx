@@ -19,6 +19,7 @@ import { useApp } from '../contexts/AppContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { CompareModal } from '../components/common/CompareModal';
 import { toBengaliNumber } from '../utils/geoUtils';
+import { BANGLADESH_DISTRICTS } from '../data/bangladeshLocations';
 
 export const ProfessionalsPage: React.FC = () => {
   const { technicians, categories, addToCompare, removeFromCompare, comparedTechIds } = useApp();
@@ -28,8 +29,10 @@ export const ProfessionalsPage: React.FC = () => {
 
   const initialCat = searchParams.get('category') || 'all';
   const initialArea = searchParams.get('area') || 'all';
+  const initialDistrict = searchParams.get('district') || 'all';
 
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCat);
+  const [selectedDistrict, setSelectedDistrict] = useState<string>(initialDistrict);
   const [selectedArea, setSelectedArea] = useState<string>(initialArea);
   const [availabilityFilter, setAvailabilityFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -51,9 +54,7 @@ export const ProfessionalsPage: React.FC = () => {
   // Reset page when filter or search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCategory, selectedArea, availabilityFilter, searchQuery, sortBy, isMobile]);
-
-  const areas = ['all', 'Mirpur', 'Dhanmondi', 'Uttara', 'Mohammadpur', 'Gulshan', 'Banani', 'Bashundhara', 'Farmgate', 'Badda'];
+  }, [selectedCategory, selectedDistrict, selectedArea, availabilityFilter, searchQuery, sortBy, isMobile]);
 
   const getCategoryName = (skillId: string) => {
     const cat = categories.find((c) => c.id === skillId);
@@ -64,21 +65,30 @@ export const ProfessionalsPage: React.FC = () => {
   const filteredTechnicians = useMemo(() => {
     return technicians
       .filter((tech) => {
+        // Only publicly list technicians verified by Admin as Skill Verified or Platform Verified
+        if (!tech.skillVerified && !tech.platformVerified) return false;
+
         const matchesCategory =
           selectedCategory === 'all' || tech.skills.includes(selectedCategory);
+        const matchesDistrict =
+          selectedDistrict === 'all' ||
+          (tech.district || tech.city || '').toLowerCase() === selectedDistrict.toLowerCase();
         const matchesArea =
           selectedArea === 'all' ||
           tech.primaryArea.toLowerCase() === selectedArea.toLowerCase() ||
           tech.serviceAreas.some(a => a.toLowerCase() === selectedArea.toLowerCase());
         const matchesAvailability =
-          availabilityFilter === 'all' || tech.availability === availabilityFilter;
+          availabilityFilter === 'all' ||
+          (availabilityFilter === 'emergency' ? !!tech.emergencyAvailable : tech.availability === availabilityFilter);
         const matchesSearch =
           !searchQuery.trim() ||
           tech.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (tech.district || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          tech.primaryArea.toLowerCase().includes(searchQuery.toLowerCase()) ||
           tech.bioEn.toLowerCase().includes(searchQuery.toLowerCase()) ||
           tech.bioBn.includes(searchQuery);
 
-        return matchesCategory && matchesArea && matchesAvailability && matchesSearch;
+        return matchesCategory && matchesDistrict && matchesArea && matchesAvailability && matchesSearch;
       })
       .sort((a, b) => {
         if (sortBy === 'rating') return b.rating - a.rating;
@@ -87,7 +97,7 @@ export const ProfessionalsPage: React.FC = () => {
         if (sortBy === 'experience') return b.experienceYears - a.experienceYears;
         return 0;
       });
-  }, [technicians, selectedCategory, selectedArea, availabilityFilter, searchQuery, sortBy]);
+  }, [technicians, selectedCategory, selectedDistrict, selectedArea, availabilityFilter, searchQuery, sortBy]);
 
   // Per user requirements:
   // Desktop: 9 professionals per page (3 columns x 3 rows = 9)
@@ -165,17 +175,20 @@ export const ProfessionalsPage: React.FC = () => {
             </select>
           </div>
 
-          {/* Area Dropdown */}
+          {/* All-Bangladesh District Dropdown */}
           <div>
             <select
-              value={selectedArea}
-              onChange={(e) => setSelectedArea(e.target.value)}
+              value={selectedDistrict}
+              onChange={(e) => {
+                setSelectedDistrict(e.target.value);
+                setSelectedArea('all');
+              }}
               className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-orange-500/50 font-medium cursor-pointer"
             >
-              <option value="all">{t.search.allLocations}</option>
-              {areas.filter(a => a !== 'all').map((a) => (
-                <option key={a} value={a}>
-                  {a}, Dhaka
+              <option value="all">{isBangla ? 'সারা বাংলাদেশ (৬৪ জেলা)' : 'All Bangladesh (64 Districts)'}</option>
+              {BANGLADESH_DISTRICTS.map((d) => (
+                <option key={d.id} value={d.nameEn}>
+                  {isBangla ? `${d.nameBn} (${d.nameEn})` : d.nameEn}
                 </option>
               ))}
             </select>

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wrench, ShieldCheck, CheckCircle2, ArrowRight, DollarSign, Users, Award } from 'lucide-react';
+import { Wrench, ShieldCheck, CheckCircle2, ArrowRight, DollarSign, Users, Award, Eye, EyeOff } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 
 export const BecomeProfessionalPage: React.FC = () => {
-  const { categories } = useApp();
+  const { categories, registerNewTechnician } = useApp();
   const { isBangla } = useLanguage();
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -14,9 +14,11 @@ export const BecomeProfessionalPage: React.FC = () => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [nidNumber, setNidNumber] = useState('');
   const [selectedSkills, setSelectedSkills] = useState<string[]>(['electrical']);
-  const [city, setCity] = useState('Dhaka');
+  const [city] = useState('Dhaka');
   const [area, setArea] = useState('Mirpur');
   const [experienceYears, setExperienceYears] = useState('5');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,14 +34,19 @@ export const BecomeProfessionalPage: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    await register({
+    const res = await register({
       name,
       email: email || `${phone}@servexa.demo`,
       phone,
+      password: password || '123456',
       role: 'TECHNICIAN',
       city,
       area
     });
+
+    if (res.user) {
+      registerNewTechnician(res.user);
+    }
 
     setIsSubmitting(false);
     setSubmitted(true);
@@ -52,16 +59,24 @@ export const BecomeProfessionalPage: React.FC = () => {
           <CheckCircle2 className="w-8 h-8" />
         </div>
         <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-          আবেদন সফলভাবে গ্রহণ করা হয়েছে!
+          {isBangla ? 'আবেদন সফলভাবে গ্রহণ করা হয়েছে!' : 'Application Received Successfully!'}
         </h2>
         <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-          আপনার প্রোফাইল ও এনআইডি যাচাইয়ের জন্য আমাদের টিম ২৪ ঘণ্টার মধ্যে <strong>{phone}</strong> নম্বরে যোগাযোগ করবে।
+          {isBangla ? (
+            <>
+              আপনার প্রোফাইল ও এনআইডি যাচাইয়ের জন্য আমাদের টিম ২৪ ঘণ্টার মধ্যে <strong>{phone}</strong> নম্বরে যোগাযোগ করবে।
+            </>
+          ) : (
+            <>
+              Our verification team will contact you at <strong>{phone}</strong> within 24 hours to verify your profile and NID.
+            </>
+          )}
         </p>
         <button
           onClick={() => navigate('/technician/dashboard')}
           className="mt-4 px-6 py-2.5 rounded-xl bg-orange-600 text-white font-bold text-xs"
         >
-          টেকনিশিয়ান ড্যাশবোর্ডে প্রবেশ করুন
+          {isBangla ? 'টেকনিশিয়ান ড্যাশবোর্ডে প্রবেশ করুন' : 'Go to Technician Dashboard'}
         </button>
       </div>
     );
@@ -91,25 +106,37 @@ export const BecomeProfessionalPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-2">
           <DollarSign className="w-8 h-8 text-emerald-600" />
-          <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">মাসিক ৪০,০০০৳+ আয়ের সুযোগ</h3>
+          <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+            {isBangla ? 'মাসিক ৪০,০০০৳+ আয়ের সুযোগ' : 'Earn ৳40,000+ Monthly'}
+          </h3>
           <p className="text-xs text-zinc-500 leading-relaxed">
-            কোনো মধ্যস্বত্বভোগী নেই। গ্রাহক থেকে সরাসরি আপনার নির্ধারিত ভিজিটিং ফি ও শ্রম মজুরি পান।
+            {isBangla
+              ? 'কোনো মধ্যস্বত্বভোগী নেই। গ্রাহক থেকে সরাসরি আপনার নির্ধারিত ভিজিটিং ফি ও শ্রম মজুরি পান।'
+              : 'No middlemen. Receive your visiting fees and service earnings directly with transparent settlement.'}
           </p>
         </div>
 
         <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-2">
           <Users className="w-8 h-8 text-orange-600" />
-          <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">আপনার নিজস্ব এলাকার কাজ</h3>
+          <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+            {isBangla ? 'আপনার নিজস্ব এলাকার কাজ' : 'Jobs in Your Own Area'}
+          </h3>
           <p className="text-xs text-zinc-500 leading-relaxed">
-            যে এলাকায় কাজ করতে স্বাচ্ছন্দ্যবোধ করেন শুধুমাত্র সেই এলাকা থেকেই রিকোয়েস্ট গ্রহণ করুন।
+            {isBangla
+              ? 'যে এলাকায় কাজ করতে স্বাচ্ছন্দ্যবোধ করেন শুধুমাত্র সেই এলাকা থেকেই রিকোয়েস্ট গ্রহণ করুন।'
+              : 'Accept service requests only in neighborhoods where you feel comfortable working.'}
           </p>
         </div>
 
         <div className="p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-2">
           <Award className="w-8 h-8 text-blue-600" />
-          <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">আইডি ভেরিফায়েড সম্মানজনক পরিচয়</h3>
+          <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+            {isBangla ? 'আইডি ভেরিফায়েড সম্মানজনক পরিচয়' : 'Verified Pro Identity'}
+          </h3>
           <p className="text-xs text-zinc-500 leading-relaxed">
-            Servexa ভেরিফায়েড ব্যাজের সাথে এলাকায় নিজের কাজের সুনাম ও নিয়মিত স্থায়ী কাস্টমার তৈরি করুন।
+            {isBangla
+              ? 'Servexa ভেরিফায়েড ব্যাজের সাথে এলাকায় নিজের কাজের সুনাম ও নিয়মিত স্থায়ী কাস্টমার তৈরি করুন।'
+              : 'Build trust and repeat customers in your area with the Servexa Verified Pro badge.'}
           </p>
         </div>
       </div>
@@ -118,24 +145,24 @@ export const BecomeProfessionalPage: React.FC = () => {
       <div className="max-w-2xl mx-auto bg-white dark:bg-zinc-900 rounded-3xl p-6 sm:p-8 border border-zinc-200 dark:border-zinc-800 shadow-xl space-y-6">
         <div className="text-center space-y-1">
           <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-            টেকনিশিয়ান রেজিস্ট্রেশন ফরম
+            {isBangla ? 'টেকনিশিয়ান রেজিস্ট্রেশন ফরম' : 'Technician Registration Form'}
           </h2>
           <p className="text-xs text-zinc-500">
-            সহজ কয়েকটি তথ্য পূরণ করে আবেদন করুন
+            {isBangla ? 'সহজ কয়েকটি তথ্য পূরণ করে আবেদন করুন' : 'Complete a few quick details to apply'}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
-              আপনার পূর্ণ নাম (NID অনুযায়ী)
+              {isBangla ? 'আপনার পূর্ণ নাম (NID অনুযায়ী)' : 'Full Name (as per NID)'}
             </label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="যেমন: মোঃ রফিকুল ইসলাম"
+              placeholder={isBangla ? 'যেমন: মোঃ রফিকুল ইসলাম' : 'e.g. Md. Rafiqul Islam'}
               className="w-full px-3 py-2.5 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
             />
           </div>
@@ -143,7 +170,7 @@ export const BecomeProfessionalPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
-                মোবাইল নম্বর
+                {isBangla ? 'মোবাইল নম্বর' : 'Mobile Number'}
               </label>
               <input
                 type="tel"
@@ -157,23 +184,63 @@ export const BecomeProfessionalPage: React.FC = () => {
 
             <div>
               <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
-                জাতীয় পরিচয়পত্র (NID) নম্বর
+                {isBangla ? 'জাতীয় পরিচয়পত্র (NID) নম্বর' : 'National ID (NID) Number'}
               </label>
               <input
                 type="text"
                 required
                 value={nidNumber}
                 onChange={(e) => setNidNumber(e.target.value)}
-                placeholder="১০ বা ১৭ ডিজিটের এনআইডি"
+                placeholder={isBangla ? '১০ বা ১৭ ডিজিটের এনআইডি' : '10 or 17-digit NID'}
                 className="w-full px-3 py-2.5 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-mono"
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
+                {isBangla ? 'ইমেইল (লগইনের জন্য)' : 'Email (for login)'}
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@example.com"
+                className="w-full px-3 py-2.5 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
+                {isBangla ? 'পাসওয়ার্ড (লগইনের জন্য)' : 'Password (for login)'}
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={isBangla ? 'কমপক্ষে ৬ অক্ষরের পাসওয়ার্ড' : 'Minimum 6 characters'}
+                  className="w-full px-3 py-2.5 pr-9 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(prev => !prev)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Skill Selector */}
           <div>
             <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
-              আপনার কাজের দক্ষতা নির্বাচন করুন
+              {isBangla ? 'আপনার কাজের দক্ষতা নির্বাচন করুন' : 'Select Your Trade Skills'}
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {categories.slice(0, 12).map((cat) => {
@@ -199,25 +266,25 @@ export const BecomeProfessionalPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
-                কাজের প্রাথমিক এলাকা
+                {isBangla ? 'কাজের প্রাথমিক এলাকা' : 'Primary Working Area'}
               </label>
               <select
                 value={area}
                 onChange={(e) => setArea(e.target.value)}
                 className="w-full px-3 py-2.5 text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-medium"
               >
-                <option value="Mirpur">মিরপুর (Mirpur)</option>
-                <option value="Dhanmondi">ধানমন্ডি (Dhanmondi)</option>
-                <option value="Uttara">উত্তরা (Uttara)</option>
-                <option value="Mohammadpur">মোহাম্মদপুর (Mohammadpur)</option>
-                <option value="Gulshan">গুলশান (Gulshan)</option>
-                <option value="Badda">বাড্ডা (Badda)</option>
+                <option value="Mirpur">{isBangla ? 'মিরপুর' : 'Mirpur'}</option>
+                <option value="Dhanmondi">{isBangla ? 'ধানমন্ডি' : 'Dhanmondi'}</option>
+                <option value="Uttara">{isBangla ? 'উত্তরা' : 'Uttara'}</option>
+                <option value="Mohammadpur">{isBangla ? 'মোহাম্মদপুর' : 'Mohammadpur'}</option>
+                <option value="Gulshan">{isBangla ? 'গুলশান' : 'Gulshan'}</option>
+                <option value="Badda">{isBangla ? 'বাড্ডা' : 'Badda'}</option>
               </select>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
-                কাজের অভিজ্ঞতা (বছর)
+                {isBangla ? 'কাজের অভিজ্ঞতা (বছর)' : 'Work Experience (Years)'}
               </label>
               <input
                 type="number"
@@ -236,7 +303,15 @@ export const BecomeProfessionalPage: React.FC = () => {
               disabled={isSubmitting}
               className="w-full py-3.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-extrabold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2"
             >
-              <span>{isSubmitting ? 'প্রসেসিং হচ্ছে...' : 'আবেদন জমা দিন'}</span>
+              <span>
+                {isSubmitting
+                  ? isBangla
+                    ? 'প্রসেসিং হচ্ছে...'
+                    : 'Processing...'
+                  : isBangla
+                    ? 'আবেদন জমা দিন'
+                    : 'Submit Application'}
+              </span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>

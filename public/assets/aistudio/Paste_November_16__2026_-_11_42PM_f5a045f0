@@ -1,0 +1,1119 @@
+# MASTER IMPLEMENTATION PROMPT
+## Servexa — Centralized Pricing, Admin Rules & Regulations, Technician Earnings, Commission, Wallet & Payment Management System
+
+### PROJECT OBJECTIVE
+
+Act as a Senior Full-Stack Software Engineer, Software Architect, Database Architect, Payment Systems Engineer, QA Engineer, and UI/UX Specialist.
+
+Your task is to professionally implement a complete, production-ready Pricing, Commission, Earnings, Wallet, Withdrawal, and Payment Management System into my existing Servexa Smart Technician & Home Service Booking Platform.
+
+This is an implementation task, NOT a UI redesign task.
+
+The goal is to integrate every requirement below into the existing website while preserving its current branding, design system, authentication, user roles, booking functionality, existing APIs, database structure, and working features.
+
+Do not unnecessarily rebuild the entire website or replace working functionality.
+
+First inspect the complete existing project, understand its architecture, identify the existing frontend, backend, database, authentication, booking, payment, and dashboard implementations, and then implement the new system using the existing architecture.
+
+Do not assume that a feature exists without verifying it in the codebase.
+
+---
+
+# 1. CORE BUSINESS MODEL
+
+Servexa will operate using a centralized pricing and commission management model.
+
+There will be three primary participants:
+
+1. Admin
+2. Technician
+3. Customer
+
+The Admin controls the platform-wide business rules, service pricing policies, commission percentages, payment rules, withdrawal policies, and other financial settings.
+
+Technicians can customize their service prices only within the limits and permissions established by Admin.
+
+Customers can view transparent service prices, additional charges, technician prices, and estimated total costs before confirming a booking.
+
+The system must automatically calculate:
+
+- Total service amount
+- Visiting fee
+- Additional charges
+- Applicable discounts
+- Commissionable amount
+- Servexa platform commission
+- Technician earnings
+- Pending earnings
+- Available earnings
+- Reserved balance
+- Withdrawable balance
+- Cash deposit dues
+- Withdrawal amounts
+
+All calculations must be performed and validated on the backend.
+
+Never trust prices, commissions, balances, or payment statuses submitted directly by the frontend.
+
+# 2. ADMIN DASHBOARD — RULES & REGULATIONS MANAGEMENT
+
+Create a dedicated Admin Dashboard section named:
+
+**Rules & Regulations Management**
+
+This will be the central control panel for Servexa's business, pricing, commission, earnings, and payment policies.
+
+The Admin must be able to manage the following settings without modifying source code.
+
+## 2.1 General Platform Settings
+
+- Platform name and business settings
+- Default currency: BDT (৳)
+- Default platform commission: 10%
+- Default technician earnings share: 90%
+- Enable/disable individual payment methods
+- Enable/disable service categories
+- Enable/disable price customization
+- Enable/disable emergency services
+- Enable/disable cash-on-completion payments
+- Configure minimum reserve balance
+- Configure minimum withdrawal amount
+- Configure maximum withdrawal amount
+- Configure payout processing rules
+
+All percentage settings must be validated.
+
+The default commission model is:
+
+Servexa Commission = 10%
+
+Technician Earnings = 90%
+
+The Admin may change these percentages if the business policy permits, but the total allocation must never exceed or fall below 100%.
+
+## 2.2 Service Category & Subcategory Management
+
+Admin must be able to:
+
+- Create service categories.
+- Edit service categories.
+- Delete or deactivate categories where safe.
+- Create subcategories.
+- Edit and manage subcategories.
+- Assign pricing rules to individual categories and subcategories.
+- Set category-specific commission rates if enabled.
+- Enable or disable specific services.
+- Set service descriptions, icons, and relevant details.
+
+Example categories:
+
+Electrical Services:
+- Fan Repair
+- Light Installation
+- Wiring
+- Switch Repair
+
+Plumbing Services:
+- Pipe Repair
+- Water Tap Installation
+- Water Leakage Repair
+
+AC Services:
+- AC Servicing
+- AC Installation
+- AC Repair
+- AC Gas Refill
+
+Home Appliance Services:
+- Refrigerator Repair
+- Washing Machine Repair
+- Other Appliance Repair
+
+These are examples. Preserve existing categories and existing service data.
+
+## 2.3 Service Pricing Rules
+
+Admin must be able to configure separate pricing rules for each service or subcategory.
+
+Required fields:
+
+- Default/Base Service Price
+- Minimum Service Price
+- Maximum Service Price
+- Technician Customization Permission
+- Visiting Fee
+- Minimum Visiting Fee
+- Maximum Visiting Fee
+- Hourly Rate
+- Additional Hour Charge
+- Emergency Service Charge
+- Night Service Charge
+- Weekend/Holiday Charge
+- Material/Parts Cost Policy
+- Additional Service Charge Policy
+- Price Approval Requirement
+- Service-specific Commission Rate (optional)
+- Pricing Rule Status
+
+Example configuration:
+
+Fan Repair:
+- Default Price: ৳300
+- Minimum Price: ৳250
+- Maximum Price: ৳600
+
+AC Servicing:
+- Default Price: ৳800
+- Minimum Price: ৳600
+- Maximum Price: ৳1,500
+
+Pipe Repair:
+- Default Price: ৳400
+- Minimum Price: ৳300
+- Maximum Price: ৳900
+
+These are illustrative values only. Do not hardcode them as permanent prices.
+
+Admin must be able to update every value through the dashboard.
+
+Validate that Minimum Price cannot exceed Maximum Price and Default Price must remain within the permitted range.
+
+## 2.4 Technician Price Customization Rules
+
+Admin must decide whether technicians can customize:
+
+- Service Price
+- Visiting Fee
+- Hourly Rate
+- Additional Hour Charge
+- Emergency Charge
+- Night Charge
+- Other permitted service-specific charges
+
+For every field, provide appropriate permissions:
+
+- Admin Controlled
+- Technician Customizable Within Range
+- Technician Customizable With Admin Approval
+- Fixed Price (No Customization)
+
+When a technician is registered or approved and selects a service, the system must automatically load the corresponding Admin-defined default pricing rules.
+
+The technician can then customize permitted fields within the Admin-defined minimum and maximum values.
+
+Never allow a technician to bypass Admin pricing restrictions through frontend manipulation or direct API requests.
+
+If Admin approval is required, the changed price must remain pending until approved.
+
+Display the correct approved service price to customers.
+
+## 2.5 Admin Commission Rules
+
+Admin must be able to configure:
+
+- Default platform commission percentage
+- Technician earnings percentage
+- Category-specific commission
+- Subcategory-specific commission (if enabled)
+- Commissionable service charges
+- Non-commissionable charges
+- Commission calculation rules
+
+Default business model:
+
+- Technician: 90%
+- Servexa: 10%
+
+Example:
+
+Commissionable Service Amount = ৳1,000
+
+Technician Earnings = ৳900
+
+Servexa Commission = ৳100
+
+Important:
+
+The system must explicitly identify which amounts are commissionable.
+
+Visiting fees, materials/parts costs, taxes, discounts, emergency fees, and additional charges must have configurable commission policies.
+
+Do not automatically apply 10% to every charge.
+
+For material/parts costs, support separately documented actual expenses and an Admin-configurable commission policy.
+
+Prevent technicians from falsely reporting materials costs to reduce platform commission.
+
+Maintain a clear breakdown of every calculation.
+
+---
+
+# 3. TECHNICIAN DASHBOARD — PRICING MANAGEMENT
+
+Create or integrate a dedicated Technician Dashboard section named:
+
+**My Services & Pricing**
+
+When technicians select services, automatically display the Admin-defined default prices and applicable rules.
+
+Technicians should be able to:
+
+- View available service categories.
+- Select the services they provide.
+- View default prices.
+- Customize permitted service prices.
+- Set permitted visiting fees.
+- Set permitted hourly rates.
+- Configure permitted additional charges.
+- View minimum and maximum permitted prices.
+- Submit price changes for Admin approval where required.
+- Activate or deactivate their services.
+- View approval status.
+- View pricing change history.
+
+Every price must remain within the applicable Admin-defined rules.
+
+Show clear statuses:
+
+- Default Price
+- Customized Price
+- Pending Approval
+- Approved
+- Rejected
+- Inactive
+
+When Admin changes pricing rules, update future pricing configurations appropriately.
+
+Do not silently change prices for already-confirmed bookings.
+
+---
+
+# 4. CUSTOMER DASHBOARD — TRANSPARENT PRICING
+
+Customers must see clear and understandable pricing before confirming a service booking.
+
+Display:
+
+- Service name
+- Technician name
+- Technician's approved service price
+- Visiting fee
+- Hourly charge, if applicable
+- Additional service charges
+- Emergency/night/weekend charges, if applicable
+- Estimated material/parts costs, if known
+- Applicable discount
+- Estimated total amount
+
+Example:
+
+Fan Repair:
+
+Service Charge: ৳400
+
+Visiting Fee: ৳100
+
+Estimated Total: ৳500
+
+If additional materials or work are required after inspection, the technician must submit the additional cost and reason.
+
+The customer must explicitly approve the additional amount before it is added to the booking.
+
+Never silently increase the confirmed booking price.
+
+Customers must see a final itemized bill before completing payment.
+
+---
+
+# 5. CENTRALIZED COMMISSION CALCULATION SYSTEM
+
+Implement an automatic commission calculation engine.
+
+Default formula:
+
+Commission = Commissionable Amount × 10%
+
+Technician Earnings = Commissionable Amount × 90%
+
+Example:
+
+Commissionable Amount = ৳1,000
+
+Servexa Commission = ৳100
+
+Technician Earnings = ৳900
+
+The system must:
+
+- Calculate commission on the backend.
+- Store the calculation for every booking.
+- Maintain transaction records.
+- Prevent duplicate commission credits.
+- Handle discounts according to Admin-defined rules.
+- Handle refunds and disputes.
+- Handle booking cancellations.
+- Handle additional approved service charges.
+- Maintain accurate financial records.
+
+Use the commission rule applicable to the booking when it is confirmed.
+
+Store a pricing and commission snapshot with every confirmed booking.
+
+Later Admin rule changes must not modify historical transactions or already-confirmed booking prices.
+
+Use safe decimal/money calculations with appropriate rounding in BDT.
+
+Never calculate financial amounts using unvalidated frontend values.
+
+---
+
+# 6. TECHNICIAN WALLET & EARNINGS MANAGEMENT
+
+Create a complete Technician Wallet Dashboard.
+
+The wallet must display separate financial balances:
+
+1. Total Earnings
+2. Pending Earnings
+3. Available Balance
+4. Reserved Balance
+5. Withdrawable Balance
+6. Cash Pending
+7. Commission Due
+8. Total Withdrawn
+
+These values must be calculated from verified financial transactions and ledger entries.
+
+Do not simply store a single mutable balance and use it for every purpose.
+
+## 6.1 Earnings Lifecycle
+
+Implement the following lifecycle:
+
+Booking Confirmed
+→ Service In Progress
+→ Service Completed
+→ Customer Confirmation (where required)
+→ Payment Verified
+→ Commission Calculated
+→ Technician Earnings Credited
+→ Available for Withdrawal
+
+Pending earnings must not become withdrawable until the applicable payment and service-completion requirements are satisfied.
+
+Support cancellation, refunds, disputes, and payout adjustments.
+
+## 6.2 Minimum Reserve Balance System
+
+Implement a configurable Minimum Reserve Balance system.
+
+Admin must be able to set:
+
+- Global Minimum Reserve Balance
+- Technician-specific Reserve Balance (optional)
+- Minimum Withdrawal Amount
+- Maximum Withdrawal Amount
+- Withdrawal Frequency Limits
+
+Default example:
+
+Minimum Reserve Balance = ৳500
+
+The Technician must retain at least ৳500 in the relevant eligible balance.
+
+Formula:
+
+Withdrawable Balance = MAX(0, Available Balance - Reserve Balance)
+
+Example:
+
+Available Balance = ৳3,000
+
+Reserved Balance = ৳500
+
+Withdrawable Balance = ৳2,500
+
+Additional examples:
+
+Available Balance ৳300 → Withdrawable ৳0
+
+Available Balance ৳500 → Withdrawable ৳0
+
+Available Balance ৳800 → Withdrawable ৳300
+
+Available Balance ৳1,500 → Withdrawable ৳1,000
+
+Available Balance ৳3,000 → Withdrawable ৳2,500
+
+Important requirements:
+
+- Reserve balance is still the technician's earned money.
+- It is not a platform commission.
+- It is not a penalty or forfeited amount.
+- It must not be withdrawn while the reserve restriction applies.
+- Display it separately and transparently.
+- Admin must be able to update the reserve amount.
+- Do not allow withdrawals that reduce the eligible balance below the applicable reserve.
+- Recalculate withdrawable balance after every credit, withdrawal, refund, or adjustment.
+
+Never represent reserved ledger funds as money already deposited into a technician's personal bank or mobile wallet.
+
+---
+
+# 7. WITHDRAWAL MANAGEMENT SYSTEM
+
+Implement a complete withdrawal workflow.
+
+Supported payout destinations may include:
+
+- bKash
+- Nagad
+- Rocket
+- Bank Account
+
+The actual payout methods must depend on approved provider integration and business eligibility.
+
+Technicians must be able to:
+
+- Add a payout account.
+- Submit account verification details.
+- View verified payout methods.
+- Request withdrawals.
+- View available withdrawable balance.
+- View minimum and maximum withdrawal requirements.
+- View applicable fees.
+- Track withdrawal status.
+- View withdrawal history.
+
+Withdrawal statuses:
+
+- Pending
+- Under Review
+- Processing
+- Completed
+- Failed
+- Rejected
+- Reversed
+
+Admin must be able to:
+
+- View withdrawal requests.
+- Approve or reject requests.
+- Process eligible payouts.
+- View payout transaction references.
+- View payout history.
+- Investigate failed transactions.
+
+When a withdrawal is requested:
+
+1. Validate the technician.
+2. Validate the verified payout destination.
+3. Recalculate withdrawable balance on the backend.
+4. Validate minimum and maximum withdrawal limits.
+5. Apply the reserve restriction.
+6. Atomically reserve the requested amount.
+7. Prevent duplicate or concurrent withdrawals.
+8. Process payout through an approved provider.
+9. Mark it completed only after provider confirmation.
+10. Restore the reserved withdrawal amount if the payout fails or is reversed.
+
+Do not mark a payout successful simply because an API request was submitted.
+
+---
+
+# 8. PAYMENT MANAGEMENT SYSTEM
+
+Support the following customer payment methods, subject to actual merchant onboarding and provider approval:
+
+- bKash
+- Nagad
+- Rocket
+- Debit/Credit Card
+- Cash on Completion
+
+Admin must be able to enable or disable available payment methods.
+
+For online payments:
+
+1. Customer confirms booking.
+2. Customer selects an enabled payment method.
+3. Backend creates the payment request.
+4. Payment provider processes the transaction.
+5. Backend validates the provider callback, webhook, IPN, or transaction verification response.
+6. Payment is marked successful only after server-side verification.
+7. Booking payment status is updated.
+8. Technician earnings and platform commission are calculated according to the applicable rules and lifecycle.
+9. Eligible earnings become available after service completion and required confirmation.
+
+Important:
+
+- Never trust screenshots as payment proof.
+- Never trust frontend payment-success messages.
+- Verify payment transactions with the provider.
+- Prevent duplicate webhook processing.
+- Handle failed, pending, expired, refunded, and reversed transactions.
+- Maintain provider transaction IDs and internal transaction IDs.
+- Use idempotent payment processing.
+
+Do not invent provider APIs, credentials, endpoints, or successful payment responses.
+
+If an actual payment provider integration is missing, implement a clean provider adapter/interface and clearly identify the required credentials, documentation, merchant onboarding, and integration steps.
+
+---
+
+# 9. CASH ON COMPLETION — TECHNICIAN DEPOSIT SYSTEM
+
+Implement the previously defined Cash on Completion model.
+
+The business flow must work as follows:
+
+Step 1:
+Customer selects Cash on Completion.
+
+Step 2:
+Technician completes the service and collects the agreed amount directly from the customer in cash.
+
+Step 3:
+The booking is marked as Cash Collected / Cash Pending, subject to customer confirmation and the platform's verification rules.
+
+Step 4:
+The technician must deposit the full collected cash amount into the Servexa merchant account using a provider-approved merchant collection or deposit channel.
+
+Step 5:
+Backend verifies the actual transaction through the payment provider or an approved reconciliation process.
+
+Step 6:
+After successful verification, the backend records the deposit and applies the commission calculation.
+
+Example:
+
+Customer Cash Payment = ৳1,000
+
+Technician deposits = ৳1,000
+
+Technician Earnings = ৳900
+
+Servexa Commission = ৳100
+
+Step 7:
+After the applicable booking and payment conditions are satisfied:
+
+- Technician's 90% share is credited to the appropriate earnings ledger.
+- Servexa's 10% commission is recorded.
+- Eligible technician earnings become available according to the wallet rules.
+- Reserve balance remains subject to the withdrawal policy.
+
+## 9.1 Cash Deposit Statuses
+
+Implement:
+
+- Cash Pending
+- Cash Collected
+- Deposit Submitted
+- Deposit Verification Pending
+- Payment Verified
+- Earnings Credited
+- Commission Recorded
+- Overdue
+- Disputed
+- Rejected
+
+## 9.2 Cash Deposit Deadline
+
+Admin must be able to configure:
+
+- Deposit deadline
+- Reminder intervals
+- Grace period
+- Overdue rules
+- Temporary booking restrictions
+
+If a technician fails to deposit the collected cash within the configured deadline:
+
+1. Mark the booking as Cash Pending or Overdue.
+2. Send reminders.
+3. Display outstanding cash and commission details.
+4. Allow the technician to submit a valid deposit reference.
+5. Verify the deposit.
+6. If the amount remains unpaid after the deadline and review process, temporarily restrict new bookings.
+7. Restore booking access after the outstanding amount is verified and settled.
+
+Do not immediately suspend a technician for one technical payment delay.
+
+Allow legitimate payment disputes and Admin review.
+
+Do not block already accepted or in-progress jobs solely because of a new booking restriction, unless a verified safety or compliance reason requires it.
+
+## 9.3 Cash Deposit Security
+
+- A screenshot alone must never confirm a deposit.
+- Validate transaction references and amounts.
+- Detect duplicate deposit references.
+- Reconcile merchant account transactions.
+- Prevent a technician from claiming a deposit that belongs to another booking.
+- Maintain a complete cash collection and deposit audit trail.
+
+Important business constraint:
+
+Customer cash paid directly to a technician does not mean Servexa has received that money.
+
+The money is not considered deposited into Servexa until it has been received and verified through an approved collection channel.
+
+Do not assume that ordinary personal bKash/Nagad transfers are equivalent to an approved merchant collection transaction.
+
+Confirm that the selected payment provider permits the required collection, reconciliation, and payout model before enabling it in production.
+
+---
+
+# 10. ADMIN FINANCIAL MANAGEMENT DASHBOARD
+
+Create a dedicated Admin Financial Management area.
+
+Admin must be able to monitor:
+
+- Total platform revenue
+- Total platform commission
+- Total technician earnings
+- Pending technician earnings
+- Available technician earnings
+- Total reserved balance
+- Total withdrawal requests
+- Completed withdrawals
+- Failed withdrawals
+- Pending withdrawals
+- Total online payment collections
+- Cash collected by technicians
+- Cash pending deposits
+- Verified cash deposits
+- Outstanding commission dues
+- Refunds and adjustments
+
+Provide:
+
+- Search
+- Filters
+- Date range
+- Category filters
+- Technician filters
+- Booking filters
+- Payment status filters
+- Export functionality, where supported
+- Detailed transaction views
+- Financial summaries and charts
+
+Every financial figure must come from actual backend data.
+
+Do not use dummy or hardcoded financial data.
+
+---
+
+# 11. ADMIN RULES & REGULATIONS — MANAGEMENT EXPERIENCE
+
+Create a clean and professional interface where Admin can manage all rules without technical knowledge.
+
+Organize the settings into sections:
+
+1. General Platform Rules
+2. Category & Subcategory Rules
+3. Service Pricing Rules
+4. Technician Price Customization
+5. Platform Commission Rules
+6. Visiting & Additional Charges
+7. Material & Parts Cost Rules
+8. Wallet & Reserve Balance Rules
+9. Withdrawal Rules
+10. Online Payment Rules
+11. Cash on Completion Rules
+12. Booking & Cancellation Rules
+13. Refund & Dispute Rules
+14. Discount & Promotion Rules
+
+Each setting must include:
+
+- Clear label
+- Explanation
+- Input validation
+- Default value where appropriate
+- Save button
+- Update confirmation
+- Active/inactive status
+- Change history where relevant
+
+Add a confirmation step for sensitive financial policy changes.
+
+Maintain an audit log containing:
+
+- Admin ID
+- Previous value
+- New value
+- Date and time
+- Reason for change, where applicable
+
+Use role-based permissions so unauthorized users cannot update financial rules.
+
+---
+
+# 12. BOOKING PRICE SNAPSHOT & HISTORICAL CONSISTENCY
+
+This requirement is critical.
+
+When a customer confirms a booking, store an immutable snapshot containing:
+
+- Selected service
+- Technician ID
+- Customer ID
+- Service price
+- Visiting fee
+- Additional charges
+- Discount
+- Commissionable amount
+- Commission percentage
+- Technician earnings percentage
+- Platform commission
+- Estimated total
+- Final agreed amount
+- Applicable pricing rule version
+- Booking confirmation timestamp
+
+After confirmation, future Admin pricing changes must not silently alter the existing booking.
+
+If extra work is required:
+
+- Technician submits an additional charge request.
+- Customer reviews the breakdown.
+- Customer explicitly approves or rejects it.
+- Backend records the approval.
+- Only approved additional charges can be added.
+
+Keep historical financial calculations reproducible.
+
+---
+
+# 13. DATABASE & BACKEND ARCHITECTURE
+
+Inspect the existing database before changing anything.
+
+Reuse existing models and collections where appropriate.
+
+Create or extend models for the following concepts:
+
+- PricingRules
+- ServiceCategories
+- ServiceSubcategories
+- TechnicianServices
+- TechnicianPricing
+- CommissionRules
+- BookingPriceSnapshots
+- Wallets
+- WalletTransactions
+- TechnicianEarnings
+- WithdrawalRequests
+- PayoutAccounts
+- PaymentTransactions
+- CashCollections
+- CashDeposits
+- RefundTransactions
+- FinancialAdjustments
+- AdminAuditLogs
+- PricingRuleVersions
+
+These are logical entities, not mandatory collection names.
+
+Adapt the exact schema to the existing database and codebase.
+
+Important backend requirements:
+
+- Strong validation
+- Authentication
+- Role-based authorization
+- Atomic financial operations
+- Database transactions where supported
+- Idempotency keys
+- Unique payment/deposit references
+- Consistent transaction states
+- Proper indexing
+- Secure error handling
+- Audit logging
+- Pagination
+- Server-side filtering
+- Consistent API responses
+
+Never trust client-provided user IDs, roles, prices, commission percentages, earnings, or wallet balances.
+
+Never allow customers or technicians to access Admin-only endpoints.
+
+---
+
+# 14. SECURITY & FINANCIAL INTEGRITY
+
+Treat all financial endpoints as high-security operations.
+
+Implement:
+
+- Server-side authorization
+- Input validation and sanitization
+- Ownership checks
+- Rate limiting for sensitive endpoints
+- Secure payment verification
+- Webhook signature verification where supported
+- Duplicate transaction prevention
+- Concurrent withdrawal protection
+- Atomic ledger updates
+- Audit logs
+- Secure payout account handling
+- Proper secret management
+- No exposed API secrets in frontend code
+
+Financial transactions must be append-only ledger records wherever possible.
+
+Do not silently edit or delete completed financial transactions.
+
+Use reversal or adjustment transactions with a clear reason and audit history.
+
+Do not create an unapproved stored-value wallet or assume that Servexa may hold customer or technician funds indefinitely.
+
+The central collection, merchant settlement, and technician payout architecture must comply with the actual payment provider's approved business model and applicable Bangladesh requirements.
+
+A ledger entry is a record of an amount payable; it does not prove that the funds have already been transferred to the technician.
+
+If the payment provider does not support a required collection, split settlement, or payout feature, do not pretend that it works.
+
+Clearly identify the integration limitation and keep the affected production functionality disabled until an approved integration is available.
+
+---
+
+# 15. USER INTERFACE & UX REQUIREMENTS
+
+Preserve the existing Servexa branding and visual identity.
+
+Use the existing design system, colors, typography, components, layouts, responsive behavior, and navigation.
+
+The interface must be:
+
+- Professional
+- Modern
+- Clean
+- Responsive
+- Mobile-friendly
+- Easy to understand
+- Consistent across Admin, Technician, and Customer dashboards
+
+Use clear financial labels and breakdowns.
+
+Display:
+
+- Currency in BDT (৳)
+- Proper number formatting
+- Loading states
+- Empty states
+- Error states
+- Success messages
+- Confirmation dialogs
+- Toast notifications
+- Responsive tables
+- Pagination
+- Filters
+- Clear status badges
+
+Do not add unnecessary dashboard sections or duplicate existing functionality.
+
+All buttons, forms, filters, actions, and settings must work.
+
+No decorative or non-functional controls.
+
+---
+
+# 16. TESTING & VERIFICATION
+
+Do not stop after writing code.
+
+You must test the complete business flow.
+
+## Test A — Admin Pricing
+
+- Admin creates a category.
+- Admin creates a service.
+- Admin sets default, minimum, and maximum prices.
+- Admin configures commission.
+- Admin configures customization permissions.
+- Verify that the settings are saved in the database.
+
+## Test B — Technician Pricing
+
+- Technician selects an available service.
+- Default pricing automatically appears.
+- Technician customizes the price within the permitted range.
+- Verify that invalid prices are rejected by the backend.
+- Verify Admin approval workflows where applicable.
+
+## Test C — Customer Booking
+
+- Customer views a technician's approved price.
+- Customer sees itemized charges.
+- Customer confirms the booking.
+- Verify the price snapshot is stored.
+- Update Admin pricing rules.
+- Verify the existing confirmed booking price does not change.
+
+## Test D — Commission
+
+For a commissionable amount of ৳1,000:
+
+- Technician share = ৳900.
+- Servexa commission = ৳100.
+
+Verify the backend calculation and ledger entries.
+
+Test different service prices, discounts, additional charges, and non-commissionable material costs.
+
+## Test E — Minimum Reserve Balance
+
+With:
+
+Available Balance = ৳3,000
+
+Reserve = ৳500
+
+Expected Withdrawable Balance = ৳2,500.
+
+Test:
+
+- Balance below reserve.
+- Balance equal to reserve.
+- Balance above reserve.
+- Withdrawal exactly at the permitted limit.
+- Withdrawal exceeding the limit.
+- Multiple concurrent withdrawal requests.
+
+No withdrawal may violate the reserve requirement.
+
+## Test F — Online Payment
+
+Verify:
+
+- Payment request creation.
+- Provider verification.
+- Successful payment.
+- Failed payment.
+- Pending payment.
+- Duplicate webhook handling.
+- Refund and reversal handling.
+
+Do not use fake payment success responses in production.
+
+## Test G — Cash on Completion
+
+Verify:
+
+- Customer selects cash.
+- Technician records cash collection.
+- Cash Pending status appears.
+- Technician submits deposit reference.
+- Backend verifies the actual deposit.
+- Commission and technician earnings are recorded correctly.
+- Duplicate deposits are rejected.
+- Overdue reminders work.
+- Booking restrictions work after the configured deadline and review.
+- Access is restored after settlement.
+
+## Test H — Withdrawal
+
+Verify:
+
+- Verified payout account.
+- Valid withdrawal.
+- Insufficient balance.
+- Reserve restriction.
+- Duplicate request prevention.
+- Successful provider payout.
+- Failed payout restoration.
+- Correct transaction history.
+
+## Test I — Security
+
+Verify:
+
+- Customer cannot access Admin settings.
+- Technician cannot edit Admin rules.
+- Technician cannot change commission.
+- Technician cannot manipulate another technician's wallet.
+- Frontend price manipulation is rejected.
+- Unauthorized financial API requests are rejected.
+- Duplicate payment callbacks cannot create duplicate earnings.
+
+---
+
+# 17. IMPLEMENTATION RULES — STRICT REQUIREMENTS
+
+Follow these instructions throughout implementation:
+
+1. First inspect the existing complete codebase.
+2. Understand the existing architecture before editing.
+3. Preserve all working features.
+4. Do not rebuild unrelated pages.
+5. Do not remove existing data.
+6. Do not break existing authentication or user roles.
+7. Do not create duplicate APIs or database models unnecessarily.
+8. Use existing reusable components wherever possible.
+9. Implement both frontend and backend.
+10. Implement actual database persistence.
+11. Use server-side financial calculations.
+12. Implement real validation and authorization.
+13. Do not use dummy data.
+14. Do not use temporary fixes.
+15. Do not use mock payment success in production.
+16. Do not hardcode Admin pricing rules.
+17. Do not expose sensitive credentials.
+18. Do not leave non-functional buttons.
+19. Do not claim a feature is complete without testing it.
+20. Do not stop after providing an implementation plan.
+
+If an external provider credential, merchant account, API permission, or legal approval is unavailable, implement the parts that can be completed safely and clearly identify the exact external dependency. Never fabricate a successful integration.
+
+If a test fails, investigate and fix the actual root cause instead of hiding the error.
+
+If an existing feature conflicts with these requirements, identify the conflict, preserve existing data, and implement the safest compatible solution.
+
+---
+
+# 18. FINAL DELIVERY REQUIREMENTS
+
+The task is complete only when the implemented system works end-to-end.
+
+After implementation, provide a concise but complete report containing:
+
+1. Features implemented.
+2. Admin Dashboard changes.
+3. Technician Dashboard changes.
+4. Customer Dashboard changes.
+5. Backend APIs created or updated.
+6. Database models and schema changes.
+7. Commission and earnings calculation logic.
+8. Wallet and reserve balance implementation.
+9. Withdrawal workflow.
+10. Online payment integration status.
+11. Cash on Completion integration status.
+12. Security and authorization implementation.
+13. Tests performed and their actual results.
+14. Any unresolved issues or external dependencies.
+15. Exact environment variables or provider credentials required for deployment.
+
+Provide a list of changed files and explain their purpose.
+
+Do not report successful testing unless the tests actually passed.
+
+Do not report full payment integration if only the UI or an adapter has been created.
+
+Do not leave the project in a partially implemented or broken state.
+
+## FINAL INSTRUCTION
+
+Implement the complete Servexa Centralized Pricing, Rules & Regulations, Technician Customization, Customer Transparent Pricing, 90/10 Commission, Earnings Ledger, Minimum Reserve Balance, Withdrawal, Online Payment, and Cash on Completion system as one integrated solution.
+
+Every feature must follow the same Admin-controlled business rules.
+
+The system must be secure, scalable, maintainable, database-driven, fully integrated, and professionally implemented.
+
+Prioritize correctness, financial integrity, existing project compatibility, and real end-to-end functionality over simply making the interface look complete.
+
+START BY INSPECTING THE EXISTING PROJECT, THEN IMPLEMENT, TEST, FIX, AND VERIFY THE COMPLETE SYSTEM.
