@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 type Theme = 'light' | 'dark';
 
@@ -47,16 +47,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return 'light';
   });
 
-  const setTheme = (newTheme: Theme) => {
+  const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
     try {
       localStorage.setItem('kormigo_theme', newTheme);
     } catch (e) {
       console.error(e);
     }
-  };
+  }, []);
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setThemeState((prevTheme) => {
       const nextTheme = prevTheme === 'light' ? 'dark' : 'light';
       try {
@@ -66,7 +66,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
       return nextTheme;
     });
-  };
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -79,8 +79,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [theme]);
 
+  const value = useMemo(() => ({ theme, toggleTheme, setTheme }), [theme, toggleTheme, setTheme]);
+
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

@@ -4,14 +4,6 @@ import 'leaflet/dist/leaflet.css';
 import App from './App.tsx';
 import './index.css';
 
-if (typeof window !== 'undefined') {
-  window.addEventListener('unhandledrejection', (event) => {
-    if (event.reason && typeof event.reason.message === 'string' && event.reason.message.includes('WebSocket closed without opened')) {
-      event.preventDefault();
-    }
-  });
-}
-
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator && import.meta.env.PROD) {
   let refreshing = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {

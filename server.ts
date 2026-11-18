@@ -293,12 +293,11 @@ wss.on('connection', async (clientWs: WebSocket) => {
 let viteServer: Awaited<ReturnType<typeof import('vite')['createServer']>> | null = null;
 if (!isProduction) {
   const { createServer: createViteServer } = await import('vite');
-  const disableHmr = process.env.DISABLE_HMR === 'true';
   viteServer = await createViteServer({
     server: {
+      port: PORT,
       middlewareMode: true,
-      hmr: disableHmr ? false : { server },
-      ...(disableHmr ? { ws: false } : {}),
+      ws: { server },
     },
     appType: 'spa',
   });

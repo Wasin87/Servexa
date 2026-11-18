@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { translations, Language } from '../i18n/translations';
 
 interface LanguageContextType {
@@ -16,21 +16,24 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return (saved === 'en' || saved === 'bn') ? saved : 'bn'; // default Bangla
   });
 
-  const setLanguage = (lang: Language) => {
+  const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
     localStorage.setItem('kormigo_lang', lang);
     document.documentElement.lang = lang;
-  };
+  }, []);
 
   useEffect(() => {
     document.documentElement.lang = language;
   }, [language]);
 
-  const t = translations[language] || translations.bn;
-  const isBangla = language === 'bn';
+  const value = useMemo(() => {
+    const t = translations[language] || translations.bn;
+    const isBangla = language === 'bn';
+    return { language, setLanguage, t, isBangla };
+  }, [language, setLanguage]);
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t, isBangla }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );
